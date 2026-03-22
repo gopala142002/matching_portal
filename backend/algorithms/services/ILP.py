@@ -1,17 +1,10 @@
-import os
-import sys
-import django
 import gurobipy as gp
 from gurobipy import GRB
 from django.db import connection
-
-# Django setup
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "matching_portal.settings")
-django.setup()
+from tqdm import tqdm
 
 
-# 🔹 Load data
+# 🔹 Load data (ONLY uses already computed similarity)
 def load_data():
     with connection.cursor() as cursor:
         cursor.execute("""
@@ -26,27 +19,31 @@ def load_data():
     weight = {}
 
     for p, r, s in rows:
-        papers.add(p)
-        reviewers.add(r)
-        weight[(p, r)] = float(s)
+        if s is not None:
+            papers.add(p)
+            reviewers.add(r)
+            weight[(p, r)] = float(s)
 
     return list(papers), list(reviewers), weight
 
 
 # 🔹 Solve matching
-def solve_matching(papers, reviewers, weight, k=3, epsilon=0.3):
+def solve_matching(papers, reviewers, weight, k=3, epsilon=0):
 
     model = gp.Model("reviewer_assignment")
 
-    # 🔥 PERFORMANCE SETTINGS
-    model.setParam("MIPGap", 0.03)      # ✅ 2% gap
-    model.setParam("TimeLimit", 60)     # optional safety (1 min max)
+    model.setParam("MIPGap", 0.03)
+    model.setParam("TimeLimit", 600)
 
     # Only valid edges
     x = {
         (i, j): model.addVar(vtype=GRB.BINARY)
         for (i, j) in weight if weight[(i, j)] >= epsilon
     }
+
+    if not x:
+        print("❌ No valid edges (check similarity or epsilon)")
+        return None, None, None
 
     z = model.addVar(vtype=GRB.CONTINUOUS, name="z")
 
@@ -56,26 +53,29 @@ def solve_matching(papers, reviewers, weight, k=3, epsilon=0.3):
             gp.quicksum(x[i, j] for j in reviewers if (i, j) in x) == k
         )
 
-    # Reviewer max load = 6
+    # Reviewer capacity
     for j in reviewers:
         model.addConstr(
             gp.quicksum(x[i, j] for i in papers if (i, j) in x) <= 6
         )
 
-    # Min-max fairness
+    # Fairness constraint
     for i in papers:
         model.addConstr(
-            z <= gp.quicksum(weight[(i, j)] * x[i, j] for j in reviewers if (i, j) in x)
+            z <= gp.quicksum(
+                weight[(i, j)] * x[i, j]
+                for j in reviewers if (i, j) in x
+            )
         )
 
     model.setObjective(z, GRB.MAXIMIZE)
 
-    print("Optimizing (2% gap)...")
+    print("🚀 Optimizing...")
 
     try:
         model.optimize()
     except KeyboardInterrupt:
-        print("⏹️ Interrupted by user")
+        print("⏹️ Interrupted")
 
     return model, x, z
 
@@ -86,7 +86,7 @@ def save_allocation(x):
     assignments = [
         (i, j)
         for (i, j), var in x.items()
-        if var.x > 0.5
+        if var.X > 0.5
     ]
 
     with connection.cursor() as cursor:
@@ -100,33 +100,58 @@ def save_allocation(x):
 
         cursor.execute("DELETE FROM final_assignment")
 
-        cursor.executemany("""
-            INSERT INTO final_assignment (paper_id, researcher_id)
-            VALUES (%s, %s)
-        """, assignments)
+        for pair in tqdm(assignments, desc="Saving assignments"):
+            cursor.execute("""
+                INSERT INTO final_assignment (paper_id, researcher_id)
+                VALUES (%s, %s)
+            """, pair)
 
     print(f"✅ Saved {len(assignments)} assignments")
 
 
-# 🔥 MAIN
+# 🔥 MAIN (ONLY ILP)
 def main():
 
-    print("Loading data...")
+    steps = [
+        "Load Data",
+        "Solve ILP",
+        "Save Results"
+    ]
+
+    pbar = tqdm(total=len(steps), desc="ILP Progress")
+
+    # Step 1
+    print("\n📊 Loading data...")
     papers, reviewers, weight = load_data()
+    pbar.update(1)
 
     print(f"Papers: {len(papers)}, Reviewers: {len(reviewers)}")
 
+    if not weight:
+        print("❌ No similarity data found. Run similarity API first.")
+        pbar.close()
+        return {"status": "error", "message": "No similarity data"}
+
+    # Step 2
     model, x, z = solve_matching(papers, reviewers, weight)
+    pbar.update(1)
 
-    # ✅ IMPORTANT: Accept ANY feasible solution (not just optimal)
-    if model.SolCount > 0:
-        print(f"\nBest found score: {z.x:.4f}")
-        save_allocation(x)
-        print("🎉 Assignment complete!")
-    else:
-        print("❌ No feasible solution found")
-        print("👉 Try lowering epsilon or increasing max_load")
+    if model is None or model.SolCount == 0:
+        print("❌ No feasible solution")
+        pbar.close()
+        return {"status": "error", "message": "No solution"}
 
+    print(f"\n🏆 Best score: {z.X:.4f}")
 
-if __name__ == "__main__":
-    main()
+    # Step 3
+    save_allocation(x)
+    pbar.update(1)
+
+    pbar.close()
+
+    print("\n🎉 Matching complete!")
+
+    return {
+        "status": "success",
+        "score": float(z.X)
+    }

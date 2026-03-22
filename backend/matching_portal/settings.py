@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'papers',
     "reviewers",
     "paperAssign",
+    'algorithms',
     "data"
 ]
 

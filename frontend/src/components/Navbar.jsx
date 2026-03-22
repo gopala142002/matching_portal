@@ -13,7 +13,6 @@ export default function Navbar({ title, onMenuClick }) {
   const roleMap = {
     author: "/author/dashboard",
     reviewer: "/reviewer/dashboard",
-    admin: "/admin/dashboard",
   };
 
   async function handleLogout() {
@@ -89,7 +88,11 @@ export default function Navbar({ title, onMenuClick }) {
 
             {open && (
               <div className="absolute right-0 mt-2 w-40 py-1 rounded-md border bg-white shadow-lg">
+<<<<<<< HEAD
                 {availableRoles.map((r) => (
+=======
+                {["author", "reviewer"].map((r) => (
+>>>>>>> f7893545cc195a8bd63ffab1491e163e005a6ecc
                   <button
                     key={r}
                     onClick={() => switchRole(r)}
