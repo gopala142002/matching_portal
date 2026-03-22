@@ -28,12 +28,12 @@ def load_data():
 
 
 # 🔹 Solve matching
-def solve_matching(papers, reviewers, weight, k=3, epsilon=0.3):
+def solve_matching(papers, reviewers, weight, k=3, epsilon=0):
 
     model = gp.Model("reviewer_assignment")
 
     model.setParam("MIPGap", 0.03)
-    model.setParam("TimeLimit", 60)
+    model.setParam("TimeLimit", 600)
 
     # Only valid edges
     x = {

@@ -1,7 +1,7 @@
 import json
+import numpy as np
 from django.db import connection
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 
@@ -13,7 +13,6 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 def prepare_paper_reviewer_table():
     with connection.cursor() as cursor:
 
-        # Create table if not exists
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS paper_to_reviewer (
                 id BIGSERIAL PRIMARY KEY,
@@ -27,12 +26,11 @@ def prepare_paper_reviewer_table():
             );
         """)
 
-        # 🔥 TRUNCATE (fast + resets table)
+        # 🔥 TRUNCATE for fresh computation
         cursor.execute("""
             TRUNCATE TABLE paper_to_reviewer RESTART IDENTITY;
         """)
 
-        # Insert fresh data
         cursor.execute("""
             INSERT INTO paper_to_reviewer (researcher_id, paper_id)
             SELECT
@@ -72,8 +70,9 @@ def parse_field(field):
     return str(field)
 
 
-# 🔹 Compute similarity
-def compute_similarity_scores():
+# 🔹 FAST similarity computation (batch + vectorized)
+def compute_similarity_scores(batch_size=2000):
+
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT ptr.id,
@@ -89,61 +88,59 @@ def compute_similarity_scores():
         print("❌ No data found")
         return {"status": "error", "message": "No data"}
 
-    ids = []
-    paper_texts = []
-    reviewer_texts = []
-
-    print("📄 Preparing text data...")
-
-    for row in tqdm(rows, desc="Preparing text"):
-        ptr_id, p_kw, p_dom, r_kw, r_int = row
-
-        p_kw = parse_field(p_kw)
-        p_dom = parse_field(p_dom)
-        r_kw = parse_field(r_kw)
-        r_int = parse_field(r_int)
-
-        paper_text = clean_text(f"{p_kw} {p_dom}")
-        reviewer_text = clean_text(f"{r_kw} {r_int}")
-
-        ids.append(ptr_id)
-        paper_texts.append(paper_text)
-        reviewer_texts.append(reviewer_text)
-
-    print(f"🚀 Encoding {len(ids)} pairs...")
-
-    paper_embeddings = model.encode(
-        paper_texts,
-        batch_size=64,
-        show_progress_bar=True
-    )
-
-    reviewer_embeddings = model.encode(
-        reviewer_texts,
-        batch_size=64,
-        show_progress_bar=True
-    )
-
-    print("🔄 Computing cosine similarity (vectorized)...")
-
-    sims = cosine_similarity(paper_embeddings, reviewer_embeddings)
+    print(f"🚀 Processing {len(rows)} pairs...")
 
     similarities = []
 
-    for i in tqdm(range(len(ids)), desc="Assigning scores"):
-        sim = sims[i][i]
-        sim = max(0.0, min(1.0, float(sim)))
-        similarities.append((sim, ids[i]))
+    # 🔥 Batch processing (prevents memory crash)
+    for start in tqdm(range(0, len(rows), batch_size), desc="Processing batches"):
 
-    print("💾 Writing to database...")
+        batch = rows[start:start + batch_size]
 
+        ids = []
+        paper_texts = []
+        reviewer_texts = []
+
+        for row in batch:
+            ptr_id, p_kw, p_dom, r_kw, r_int = row
+
+            p_kw = parse_field(p_kw)
+            p_dom = parse_field(p_dom)
+            r_kw = parse_field(r_kw)
+            r_int = parse_field(r_int)
+
+            paper_text = clean_text(f"{p_kw} {p_dom}")
+            reviewer_text = clean_text(f"{r_kw} {r_int}")
+
+            ids.append(ptr_id)
+            paper_texts.append(paper_text)
+            reviewer_texts.append(reviewer_text)
+
+        # 🔥 Encode (batch)
+        paper_emb = model.encode(paper_texts, batch_size=64, convert_to_numpy=True)
+        reviewer_emb = model.encode(reviewer_texts, batch_size=64, convert_to_numpy=True)
+
+        # 🔥 Normalize
+        paper_emb /= np.linalg.norm(paper_emb, axis=1, keepdims=True)
+        reviewer_emb /= np.linalg.norm(reviewer_emb, axis=1, keepdims=True)
+
+        # 🔥 FAST cosine (row-wise)
+        sims = np.sum(paper_emb * reviewer_emb, axis=1)
+
+        # Store results
+        for i in range(len(ids)):
+            sim = float(max(0.0, min(1.0, sims[i])))
+            similarities.append((sim, ids[i]))
+
+    print("💾 Bulk updating database...")
+
+    # 🔥 Bulk update (FAST)
     with connection.cursor() as cursor:
-        for pair in tqdm(similarities, desc="Updating DB"):
-            cursor.execute("""
-                UPDATE paper_to_reviewer
-                SET similarity_score = %s
-                WHERE id = %s
-            """, pair)
+        cursor.executemany("""
+            UPDATE paper_to_reviewer
+            SET similarity_score = %s
+            WHERE id = %s
+        """, similarities)
 
     print(f"✅ Updated {len(similarities)} similarity scores")
 
@@ -153,7 +150,7 @@ def compute_similarity_scores():
     }
 
 
-# 🔥 MAIN FUNCTION WITH OVERALL PROGRESS
+# 🔥 MAIN FUNCTION
 def main():
 
     steps = [
@@ -163,17 +160,17 @@ def main():
 
     overall = tqdm(total=len(steps), desc="Overall Progress")
 
-    print("\nStep 1: Preparing table...")
+    print("\n🔧 Step 1: Preparing table...")
     prepare_paper_reviewer_table()
     overall.update(1)
 
-    print("\nStep 2: Computing similarity...")
+    print("\n🧠 Step 2: Computing similarity...")
     result = compute_similarity_scores()
     overall.update(1)
 
     overall.close()
 
-    print("\nCompleted")
+    print("\n🎉 Completed!")
     return result
 
 
