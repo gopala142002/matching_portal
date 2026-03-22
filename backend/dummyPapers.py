@@ -12,6 +12,9 @@ django.setup()
 from accounts.models import Researcher
 from papers.models import Paper, PaperMetadata
 
+# ✅ Import your domain file
+from research_domain import cs_domains
+
 
 NUM_PAPERS = 1000
 
@@ -34,12 +37,19 @@ abstracts = [
 ]
 
 
-def generate_keywords():
-    return ["AI", "Machine Learning", "Systems"]
+# ✅ Generate keywords + domain together (BEST APPROACH)
+def generate_keywords_and_domain():
+    domain_name = random.choice(list(cs_domains.keys()))
+    domain_data = cs_domains[domain_name]
 
+    keywords = domain_data.get("keywords", [])
 
-def generate_domains():
-    return ["Computer Science"]
+    if not keywords:
+        return ["AI"], [domain_name]  # fallback safety
+
+    num_keywords = min(len(keywords), random.randint(4, 10))
+
+    return random.sample(keywords, num_keywords), [domain_name]
 
 
 def main():
@@ -58,7 +68,7 @@ def main():
 
         author_names = [a.name for a in authors]
 
-        # ✅ FIX: use institutions (JSONB list)
+        # collect affiliations
         affiliations_set = set()
 
         for a in authors:
@@ -70,12 +80,15 @@ def main():
 
         affiliations = list(affiliations_set)
 
+        # ✅ generate realistic keywords + domain
+        keywords, domains = generate_keywords_and_domain()
+
         # create paper
         paper = Paper.objects.create(
             title=random.choice(titles),
             abstract=random.choice(abstracts),
-            keywords=generate_keywords(),
-            research_domain=generate_domains(),
+            keywords=keywords,
+            research_domain=domains,
             pdf_url="http://example.com/sample.pdf",
             status="submitted",
             created_at=timezone.now(),
