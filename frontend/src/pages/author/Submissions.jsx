@@ -2,49 +2,49 @@ import React, { useEffect, useMemo, useState } from "react";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { Link } from "react-router-dom";
-import api from "../api"; // ✅ Correct for Case B
-
+import api from "../api";
 
 export default function AuthorSubmissions() {
   const [papers, setPapers] = useState([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("All");
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch papers from backend
+  // ✅ Fetch papers (with backend filtering)
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-        const res = await api.get("/api/papers/");
+        setLoading(true);
+
+        const params = {};
+        if (status !== "All") params.status = status;
+
+        const res = await api.get("/api/papers/", { params });
         setPapers(res.data.papers || []);
       } catch (err) {
         console.error("Error fetching submissions:", err.response?.data || err);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchSubmissions();
-  }, []);
+  }, [status]);
 
-  // ✅ Filter papers by search + status
+  // ✅ Client-side search filter (fast)
   const filtered = useMemo(() => {
     return papers.filter((p) => {
-      // Search match (title or ID)
       const matchesQ =
         p.title.toLowerCase().includes(q.toLowerCase()) ||
-        String(p.id).includes(q); // ✅ FIXED: id instead of paperID
+        String(p.id).includes(q);
 
-      // Status match
-      const matchesStatus =
-        status === "All"
-          ? true
-          : p.status === status.toLowerCase().replace(" ", "_");
-
-      return matchesQ && matchesStatus;
+      return matchesQ;
     });
-  }, [papers, q, status]);
+  }, [papers, q]);
 
   // ✅ Table columns
   const columns = [
-    { key: "id", header: "Paper ID" }, // ✅ FIXED
+    { key: "id", header: "Paper ID" },
     { key: "title", header: "Title" },
     {
       key: "status",
@@ -57,13 +57,22 @@ export default function AuthorSubmissions() {
       render: (r) => (
         <Link
           className="text-gray-900 font-medium"
-          to={`/author/submissions/${r.id}`} // ✅ FIXED
+          to={`/author/submissions/${r.id}`}
         >
           View
         </Link>
       ),
     },
   ];
+
+  // ✅ Loading UI
+  if (loading) {
+    return (
+      <div className="rounded-xl border p-6 text-center">
+        Loading submissions...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -95,8 +104,14 @@ export default function AuthorSubmissions() {
         </div>
       </div>
 
-      {/* Table */}
-      <DataTable columns={columns} rows={filtered} rowKey="id" /> {/* ✅ FIXED */}
+      {/* Table or Empty State */}
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border p-6 text-center text-gray-500">
+          No submissions found.
+        </div>
+      ) : (
+        <DataTable columns={columns} rows={filtered} rowKey="id" />
+      )}
     </div>
   );
 }

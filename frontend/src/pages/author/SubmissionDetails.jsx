@@ -9,7 +9,6 @@ export default function SubmissionDetails() {
   const [paper, setPaper] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch paper detail from backend
   useEffect(() => {
     const fetchPaper = async () => {
       try {
@@ -26,7 +25,6 @@ export default function SubmissionDetails() {
       } catch (err) {
         console.error("Error fetching paper detail:", err);
 
-        // ✅ Redirect if token expired/unauthorized
         if (err.response?.status === 401) {
           localStorage.clear();
           window.location.href = "/login";
@@ -39,7 +37,6 @@ export default function SubmissionDetails() {
     fetchPaper();
   }, [paperId]);
 
-  // ✅ Loading state
   if (loading) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -48,7 +45,6 @@ export default function SubmissionDetails() {
     );
   }
 
-  // ✅ Paper not found
   if (!paper) {
     return (
       <div className="rounded-2xl border bg-white p-6">
@@ -63,7 +59,7 @@ export default function SubmissionDetails() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-gray-500">
-            Paper ID: {paper.paperID}
+            Paper ID: {paper.id} {/* ✅ FIXED */}
           </div>
           <h2 className="text-xl font-semibold">{paper.title}</h2>
         </div>
@@ -90,9 +86,23 @@ export default function SubmissionDetails() {
           ))}
         </div>
 
+        {/* 🔥 (Optional but Recommended) Research Domain */}
+        <div className="mt-4 text-sm font-medium text-gray-700">
+          Research Domain
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {paper.research_domain?.map((d, index) => (
+            <span
+              key={index}
+              className="rounded-full bg-blue-100 px-3 py-1 text-xs"
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+
         {/* Buttons */}
         <div className="mt-6 flex flex-wrap gap-3">
-          {/* PDF Download */}
           <a
             href={paper.pdf_url}
             target="_blank"
@@ -102,7 +112,6 @@ export default function SubmissionDetails() {
             Download PDF
           </a>
 
-          {/* Back */}
           <Link
             to="/author/submissions"
             className="rounded-xl border px-4 py-2 text-sm"

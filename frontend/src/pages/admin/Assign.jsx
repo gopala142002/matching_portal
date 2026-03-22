@@ -15,7 +15,7 @@ export default function AdminAssign() {
       // ✅ BACKEND
       /*
       await api.post("/api/cross-join/");
-      */
+      */  
 
       await new Promise((res) => setTimeout(res, 1000));
 

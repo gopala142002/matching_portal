@@ -14,7 +14,6 @@ export default function AuthorDashboard() {
     rejected: 0,
   });
 
-  // ✅ Fetch dashboard data from backend
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
@@ -34,12 +33,10 @@ export default function AuthorDashboard() {
     fetchDashboard();
   }, []);
 
-  // Latest 5 submissions
   const latest = papers.slice(0, 5);
 
-  // Table columns
   const columns = [
-    { key: "paperID", header: "Paper ID" },
+    { key: "id", header: "Paper ID" },  // ✅ FIXED
     { key: "title", header: "Title" },
     {
       key: "status",
@@ -52,7 +49,7 @@ export default function AuthorDashboard() {
       render: (r) => (
         <Link
           className="text-gray-900 font-medium"
-          to={`/author/submissions/${r.paperID}`}
+          to={`/author/submissions/${r.id}`}  // ✅ FIXED
         >
           View
         </Link>
@@ -62,16 +59,15 @@ export default function AuthorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ✅ Stats Cards */}
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* <StatsCard label="Total Submissions" value={papers.length} /> */}
         <StatsCard label="Submitted" value={papers.length} />
         <StatsCard label="Under Review" value={counts.under_review} />
         <StatsCard label="Accepted" value={counts.accepted} />
         <StatsCard label="Rejected" value={counts.rejected} />
       </div>
 
-      {/* ✅ Latest Submissions */}
+      {/* Table */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Latest Submissions</h3>
@@ -84,7 +80,7 @@ export default function AuthorDashboard() {
           </Link>
         </div>
 
-        <DataTable columns={columns} rows={latest} rowKey="paperID" />
+        <DataTable columns={columns} rows={latest} rowKey="id" /> {/* ✅ FIXED */}
       </div>
     </div>
   );
