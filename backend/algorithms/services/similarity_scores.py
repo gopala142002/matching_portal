@@ -163,17 +163,17 @@ def main():
 
     overall = tqdm(total=len(steps), desc="Overall Progress")
 
-    print("\n🔧 Step 1: Preparing table...")
+    print("\nStep 1: Preparing table...")
     prepare_paper_reviewer_table()
     overall.update(1)
 
-    print("\n🧠 Step 2: Computing similarity...")
+    print("\nStep 2: Computing similarity...")
     result = compute_similarity_scores()
     overall.update(1)
 
     overall.close()
 
-    print("\n🎉 Done!")
+    print("\nCompleted")
     return result
 
 

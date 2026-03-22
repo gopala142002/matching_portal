@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from .services.ILP import main as run_ilp
-from .services.similarity_service import main as run_similarity
+from .services.similarity_scores import main as run_similarity
 
 
 def run_matching(request):

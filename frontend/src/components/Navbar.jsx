@@ -12,7 +12,6 @@ export default function Navbar({ title, onMenuClick }) {
   const roleMap = {
     author: "/author/dashboard",
     reviewer: "/reviewer/dashboard",
-    admin: "/admin/dashboard",
   };
 
 
@@ -98,7 +97,7 @@ export default function Navbar({ title, onMenuClick }) {
 
             {open && (
               <div className="absolute right-0 mt-2 w-40 py-1 rounded-md border bg-white shadow-lg">
-                {["author", "reviewer", "admin"].map((r) => (
+                {["author", "reviewer"].map((r) => (
                   <button
                     key={r}
                     onClick={() => switchRole(r)}
