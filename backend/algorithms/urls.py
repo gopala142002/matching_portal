@@ -3,5 +3,5 @@ from .views import run_matching, run_similarity_api
 
 urlpatterns = [
     path('run-matching/', run_matching),
-    path('run-similarity/', run_similarity_api),
+    path('run-edge_weights/', run_similarity_api),
 ]
