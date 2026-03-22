@@ -25,7 +25,7 @@ export default function AdminLogin() {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       localStorage.setItem("is_admin", "true");
-
+      localStorage.setItem("role","admin");
       // ✅ directly navigate (no need to check role)
       navigate("/admin/dashboard");
 

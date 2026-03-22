@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import api from '../api'
+
 
 export default function AdminAssign() {
   const [result, setResult] = useState(null);
@@ -6,26 +8,23 @@ export default function AdminAssign() {
   const [crossJoinReady, setCrossJoinReady] = useState(false);
 
   // 🔥 STEP 1: Generate Cross Join
-  async function generateCrossJoin() {
-    setLoading(true);
+async function generateCrossJoin() {
+  setLoading(true);
 
-    try {
-      console.log("Generating cross join...");
+  try {
+    console.log("Generating cross join...");
 
-      // ✅ BACKEND
-      /*
-      await api.post("/api/cross-join/");
-      */  
+    const res = await api.post("/api/run-edge_weights/");  
 
-      await new Promise((res) => setTimeout(res, 1000));
+    console.log(res.data);
 
-      setCrossJoinReady(true);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    setCrossJoinReady(true);
+  } catch (err) {
+    console.error("Error generating cross join:", err);
+  } finally {
+    setLoading(false);
   }
+}
 
   // 🔥 STEP 2: Run Algorithm
   async function runAlgorithm(algoKey) {
@@ -71,7 +70,7 @@ export default function AdminAssign() {
             onClick={generateCrossJoin}
             className="rounded-xl bg-blue-600 px-4 py-2 text-white"
           >
-            Generate Cross Join
+            Assign Paper-Reviewer edge weights
           </button>
 
           {crossJoinReady && (
