@@ -2,21 +2,21 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from accounts.views import (
     register,
+    login_view,
+    admin_login_view,
+    verify_token,
     profile,
     logout_view,
-    login_view,
-    verify_token,
-    update_reviewer_status,
-    run_matching_algorithm
+    update_reviewer_status
 )
 
 urlpatterns = [
-    path("register/", register, name="register"),
-    path("login/", login_view, name="login"),
-    path("verify-token/", verify_token, name="verify_token"),
-    path("profile/", profile, name="profile"),
-    path("logout/", logout_view, name="logout"),
-    path("update-reviewer-status/", update_reviewer_status, name="update_reviewer_status"),
-    path("run-matching/", run_matching_algorithm, name="run_matching"),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("register/", register),
+    path("login/", login_view),
+    path("admin-login/", admin_login_view),   
+    path("verify-token/", verify_token),
+    path("profile/", profile),
+    path("logout/", logout_view),
+    path("update-reviewer-status/", update_reviewer_status),
+    path("token/refresh/", TokenRefreshView.as_view())
 ]

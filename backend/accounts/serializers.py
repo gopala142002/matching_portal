@@ -1,65 +1,58 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
-from django.contrib.auth import authenticate
 from django.db import transaction
 from django.contrib.auth.password_validation import validate_password
 
 from accounts.models import Researcher
 
+User = get_user_model()
+
+
+# 🔐 Register
 class RegisterSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
 
     name = serializers.CharField()
-
-    institutions = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=False
-    )
-
+    institutions = serializers.ListField(child=serializers.CharField(), allow_empty=False)
     department = serializers.CharField()
     academic_position = serializers.CharField()
 
-    research_interests = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=False
-    )
-
-    keywords = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=False
-    )
+    research_interests = serializers.ListField(child=serializers.CharField(), allow_empty=False)
+    keywords = serializers.ListField(child=serializers.CharField(), allow_empty=False)
 
     is_reviewer = serializers.BooleanField(required=False, default=False)
 
-
     def validate_email(self, value):
-        value = value.lower()
+        value = value.strip().lower()
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Email already registered")
         return value
-
 
     def validate_password(self, value):
         validate_password(value)
         return value
 
+    def _clean_list(self, values, lower=False):
+        cleaned = []
+        for v in values:
+            v = v.strip()
+            if not v:
+                continue
+            if lower:
+                v = v.lower()
+            cleaned.append(v)
+        return list(dict.fromkeys(cleaned))
 
     def validate_keywords(self, value):
-        cleaned = [v.strip().lower() for v in value if v.strip()]
-        return list(dict.fromkeys(cleaned))
-
+        return self._clean_list(value, lower=True)
 
     def validate_research_interests(self, value):
-        cleaned = [v.strip().lower() for v in value if v.strip()]
-        return list(dict.fromkeys(cleaned))
-
+        return self._clean_list(value, lower=True)
 
     def validate_institutions(self, value):
-        cleaned = [v.strip() for v in value if v.strip()]
-        return list(dict.fromkeys(cleaned))
-
+        return self._clean_list(value, lower=False)
 
     @transaction.atomic
     def create(self, validated_data):
@@ -87,6 +80,7 @@ class RegisterSerializer(serializers.Serializer):
         return user
 
 
+# 🔐 Login (used for both)
 class LoginSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
@@ -94,7 +88,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
 
-        email = data.get("email").lower()
+        email = data.get("email", "").strip().lower()
         password = data.get("password")
 
         if not email or not password:
@@ -116,6 +110,8 @@ class LoginSerializer(serializers.Serializer):
         data["user"] = user
         return data
 
+
+# 👤 Researcher
 class ResearcherSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(source="user.email", read_only=True)
@@ -134,9 +130,9 @@ class ResearcherSerializer(serializers.ModelSerializer):
             "h_index",
             "is_reviewer",
         ]
-        read_only_fields = ["id", "email"]
 
 
+# 👨‍⚖️ Reviewer Update
 class UpdateReviewerStatusSerializer(serializers.ModelSerializer):
 
     class Meta:

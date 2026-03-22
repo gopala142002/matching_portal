@@ -19,25 +19,27 @@ class PaperCreateView(generics.CreateAPIView):
         paper = serializer.save()
 
         # 🔥 Enrich metadata with OpenAlex
-        metadata = paper.metadata
-        all_affiliations = set(metadata.paper_affiliations)
+        metadata = getattr(paper, "metadata", None)
 
-        for author_name in metadata.author_names:
-            try:
-                openalex_affiliations = fetch_affiliations(author_name)
-            except Exception:
-                openalex_affiliations = []
+        if metadata:
+            all_affiliations = set(metadata.paper_affiliations or [])
 
-            for aff in openalex_affiliations:
-                inst_name = aff.get("name")
-                if inst_name and inst_name.strip():
-                    all_affiliations.add(inst_name.strip())
+            for author_name in metadata.author_names:
+                try:
+                    openalex_affiliations = fetch_affiliations(author_name)
+                except Exception:
+                    openalex_affiliations = []
 
-        metadata.paper_affiliations = sorted(all_affiliations)
-        metadata.save()
+                for aff in openalex_affiliations:
+                    inst_name = aff.get("name")
+                    if inst_name and inst_name.strip():
+                        all_affiliations.add(inst_name.strip())
+
+            metadata.paper_affiliations = sorted(all_affiliations)
+            metadata.save()
 
         return Response(
-            PaperSerializer(paper, context={"request": request}).data,
+            PaperSerializer(paper).data,
             status=status.HTTP_201_CREATED
         )
 
@@ -50,7 +52,6 @@ class PaperListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = Paper.objects.filter(author=self.request.user)
 
-        # 🔍 Filtering (VERY IMPORTANT for future matching)
         domain = self.request.query_params.get("domain")
         keyword = self.request.query_params.get("keyword")
         status_param = self.request.query_params.get("status")
@@ -70,18 +71,15 @@ class PaperListView(generics.ListAPIView):
         queryset = self.get_queryset()
 
         serializer = self.get_serializer(queryset, many=True)
-        papers = serializer.data
-
-        counts = {
-            "submitted": queryset.count(),
-            "under_review": queryset.filter(status="under_review").count(),
-            "accepted": queryset.filter(status="accepted").count(),
-            "rejected": queryset.filter(status="rejected").count(),
-        }
 
         return Response({
-            "papers": papers,
-            "counts": counts
+            "papers": serializer.data,
+            "counts": {
+                "submitted": queryset.count(),
+                "under_review": queryset.filter(status="under_review").count(),
+                "accepted": queryset.filter(status="accepted").count(),
+                "rejected": queryset.filter(status="rejected").count(),
+            }
         })
 
 

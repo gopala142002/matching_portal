@@ -5,14 +5,16 @@ import api from "../pages/api";
 
 export default function Navbar({ title, onMenuClick }) {
   const navigate = useNavigate();
-  const role = getRole();
-  const isAdmin = localStorage.getItem("is_admin") === "true"; // ✅ NEW
+
+  const role = getRole();   // 🔥 SINGLE SOURCE OF TRUTH
   const access = localStorage.getItem("access");
+
   const [open, setOpen] = useState(false);
 
   const roleMap = {
     author: "/author/dashboard",
     reviewer: "/reviewer/dashboard",
+    admin: "/admin/dashboard",
   };
 
   async function handleLogout() {
@@ -36,13 +38,12 @@ export default function Navbar({ title, onMenuClick }) {
     } finally {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
-      localStorage.removeItem("is_admin"); // ✅ NEW
+      localStorage.removeItem("is_admin"); // optional
       clearRole();
 
       navigate("/login");
     }
   }
-
 
   function switchRole(newRole) {
     if (newRole === role) {
@@ -60,7 +61,7 @@ export default function Navbar({ title, onMenuClick }) {
   return (
     <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-white px-4 py-3">
       
-
+      {/* LEFT */}
       <div className="flex items-center gap-3">
         <button
           className="md:hidden rounded-lg border px-3 py-2 text-sm"
@@ -75,8 +76,11 @@ export default function Navbar({ title, onMenuClick }) {
         </div>
       </div>
 
+      {/* RIGHT */}
       <div className="flex items-center gap-3">
-        {role && !isAdmin && (
+
+        {/* 🔥 Role switch (ONLY for non-admin) */}
+        {role && role !== "admin" && (
           <div className="relative">
             <button
               onClick={() => setOpen(!open)}
@@ -88,11 +92,7 @@ export default function Navbar({ title, onMenuClick }) {
 
             {open && (
               <div className="absolute right-0 mt-2 w-40 py-1 rounded-md border bg-white shadow-lg">
-<<<<<<< HEAD
                 {availableRoles.map((r) => (
-=======
-                {["author", "reviewer"].map((r) => (
->>>>>>> f7893545cc195a8bd63ffab1491e163e005a6ecc
                   <button
                     key={r}
                     onClick={() => switchRole(r)}
@@ -106,14 +106,14 @@ export default function Navbar({ title, onMenuClick }) {
           </div>
         )}
 
-
-        {/* {isAdmin && (
+        {/* 🔥 Admin badge */}
+        {role === "admin" && (
           <span className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm">
             Admin
           </span>
-        )} */}
+        )}
 
-        {/* LOGOUT / LOGIN */}
+        {/* LOGIN / LOGOUT */}
         {access ? (
           <button
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"

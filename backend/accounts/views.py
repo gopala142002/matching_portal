@@ -9,7 +9,7 @@ from accounts.serializers import (
     RegisterSerializer,
     LoginSerializer,
     ResearcherSerializer,
-    UpdateReviewerStatusSerializer,   # ✅ added
+    UpdateReviewerStatusSerializer,
 )
 
 from accounts.models import Researcher
@@ -51,6 +51,8 @@ def register(request):
         status=status.HTTP_201_CREATED
     )
 
+
+
 @api_view(["POST"])
 def login_view(request):
     serializer = LoginSerializer(data=request.data)
@@ -59,7 +61,9 @@ def login_view(request):
         return Response(
             {
                 "status": False,
-                "message": serializer.errors.get("non_field_errors", ["Invalid input"])[0]
+                "message": serializer.errors.get(
+                    "non_field_errors", ["Invalid credentials"]
+                )[0]
             },
             status=status.HTTP_401_UNAUTHORIZED
         )
@@ -74,6 +78,47 @@ def login_view(request):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
             "is_admin": user.is_staff,
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+
+@api_view(["POST"])
+def admin_login_view(request):
+    serializer = LoginSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(
+            {
+                "status": False,
+                "message": serializer.errors.get(
+                    "non_field_errors", ["Invalid credentials"]
+                )[0]
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    user = serializer.validated_data["user"]
+
+    if not user.is_staff: 
+        return Response(
+            {
+                "status": False,
+                "message": "Not an admin account"
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    refresh = RefreshToken.for_user(user)
+
+    return Response(
+        {
+            "status": True,
+            "message": "Admin login successful",
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "is_admin": True,
         },
         status=status.HTTP_200_OK
     )
@@ -101,7 +146,7 @@ def profile(request):
         return Response(
             {
                 "status": False,
-                "detail": "Researcher profile not found"
+                "message": "Researcher profile not found"
             },
             status=status.HTTP_404_NOT_FOUND
         )
@@ -110,10 +155,11 @@ def profile(request):
         {
             "status": True,
             "profile": ResearcherSerializer(researcher).data,
-            "is_admin": request.user.is_staff,   # ✅ added
+            "is_admin": request.user.is_staff,
         },
         status=status.HTTP_200_OK
     )
+
 
 
 @api_view(["POST"])
@@ -130,9 +176,9 @@ def logout_view(request):
     try:
         token = RefreshToken(refresh_token)
         token.blacklist()
-    except Exception as e:
+    except Exception:
         return Response(
-            {"status": False, "message": "Invalid refresh token"},
+            {"status": False, "message": "Invalid or expired token"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -140,6 +186,7 @@ def logout_view(request):
         {"status": True, "message": "Logged out successfully"},
         status=status.HTTP_200_OK
     )
+
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
@@ -176,26 +223,3 @@ def update_reviewer_status(request):
         status=status.HTTP_200_OK
     )
 
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def run_matching_algorithm(request):
-
-    if not request.user.is_staff:
-        return Response(
-            {"status": False, "message": "Only admin allowed"},
-            status=status.HTTP_403_FORBIDDEN
-        )
-
-    # 👉 TODO: Add your matching logic here
-    # Example:
-    # match_papers_to_reviewers()
-
-    return Response(
-        {
-            "status": True,
-            "message": "Matching algorithm executed successfully"
-        },
-        status=status.HTTP_200_OK
-    )

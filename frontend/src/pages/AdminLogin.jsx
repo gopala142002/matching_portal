@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { setRole } from "../data/mockDb";
-import api from "./api";
+import api from "./api";   
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -10,7 +9,7 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(""); 
+  const [error, setError] = useState("");
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -19,21 +18,20 @@ export default function AdminLogin() {
     try {
       const payload = { email, password };
 
-      const res = await api.post("/api/auth/login/", payload);
+      // 🔥 IMPORTANT: call admin endpoint
+      const res = await api.post("/api/auth/admin-login/", payload);
+
+      // 🔐 store tokens
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      localStorage.setItem("is_admin",String(res.data.is_admin));
-      if (res.data.is_admin) {
-        setRole("admin");
-        navigate("/admin/dashboard");
-      } else {
-        setRole("author");
-        navigate("/author/dashboard");
-      }
+      localStorage.setItem("is_admin", "true");
+
+      // ✅ directly navigate (no need to check role)
+      navigate("/admin/dashboard");
 
     } catch (err) {
       const message =
-        err.response?.data?.message || "Something went wrong";
+        err.response?.data?.message || "Invalid admin credentials";
 
       setError(message);
     }
@@ -42,7 +40,7 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-3xl border bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-semibold">Login</h2>
+        <h2 className="text-2xl font-semibold">Admin Login</h2>
 
         <form className="mt-6 space-y-4" onSubmit={handleLogin}>
           {error && (
@@ -83,7 +81,7 @@ export default function AdminLogin() {
           </div>
 
           <button className="w-full bg-black text-white py-2 rounded-xl">
-            Login
+            Login as Admin
           </button>
         </form>
 

@@ -2,14 +2,14 @@ from rest_framework import serializers
 from papers.models import Paper, PaperMetadata
 
 
-# 📌 Metadata Serializer
+# 📄 Metadata Serializer
 class PaperMetadataSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaperMetadata
         fields = ["author_names", "paper_affiliations"]
 
 
-# 📄 Paper Read Serializer
+# 📄 Read Serializer
 class PaperSerializer(serializers.ModelSerializer):
     metadata = PaperMetadataSerializer(read_only=True)
 
@@ -20,7 +20,7 @@ class PaperSerializer(serializers.ModelSerializer):
             "title",
             "abstract",
             "keywords",
-            "research_domain",   # ✅ FIXED (no model change)
+            "research_domain",
             "pdf_url",
             "status",
             "created_at",
@@ -28,13 +28,13 @@ class PaperSerializer(serializers.ModelSerializer):
         ]
 
 
-# 👤 Author Input Serializer
+# 👤 Author Input
 class AuthorInputSerializer(serializers.Serializer):
     name = serializers.CharField()
     institute = serializers.CharField(required=False)
 
 
-# 📄 Paper Create Serializer
+# 📄 Create Serializer
 class PaperCreateSerializer(serializers.ModelSerializer):
     authors = AuthorInputSerializer(many=True, write_only=True)
 
@@ -44,38 +44,38 @@ class PaperCreateSerializer(serializers.ModelSerializer):
             "title",
             "abstract",
             "keywords",
-            "research_domain",   # ✅ FIXED (no model change)
+            "research_domain",
             "pdf_url",
             "authors",
         ]
 
-    # ✅ Normalize keywords
+    # 🔹 Clean keywords
     def validate_keywords(self, value):
         if isinstance(value, str):
             value = value.split(",")
 
         return list(set([v.strip().lower() for v in value if v.strip()]))
 
-    # ✅ Normalize research_domain
+    # 🔹 Clean domain
     def validate_research_domain(self, value):
         if isinstance(value, str):
             value = value.split(",")
 
         return list(set([v.strip().title() for v in value if v.strip()]))
 
-    # ✅ Create Paper + Metadata
+    # 🔹 Create Paper + Metadata
     def create(self, validated_data):
         request = self.context["request"]
         authors_data = validated_data.pop("authors")
 
         author_names = []
-        manual_affiliations = set()
+        affiliations = set()
 
         for author in authors_data:
             author_names.append(author["name"].strip())
 
             if author.get("institute"):
-                manual_affiliations.add(author["institute"].strip())
+                affiliations.add(author["institute"].strip())
 
         paper = Paper.objects.create(
             author=request.user,
@@ -85,7 +85,7 @@ class PaperCreateSerializer(serializers.ModelSerializer):
         PaperMetadata.objects.create(
             paper=paper,
             author_names=list(set(author_names)),
-            paper_affiliations=list(manual_affiliations)
+            paper_affiliations=list(affiliations)
         )
 
         return paper

@@ -2,18 +2,21 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { getRole } from "../data/mockDb";
 
-
 export default function ProtectedRoute({ allowedRoles, children }) {
-let role = getRole();
-if (!role) role = "author";
-if (allowedRoles && !allowedRoles.includes(role)) {
-// redirect to their own dashboard
-const map = {
-author: "/author/dashboard",
-reviewer: "/reviewer/dashboard",
-admin: "/admin/dashboard",
-};
-return <Navigate to={map[role] || "/"} replace />;
-}
-return children;
+  const token = localStorage.getItem("access");
+  const role = getRole();   // 🔥 NO default fallback
+
+  // ❌ Not logged in
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!role) 
+    {
+    return <Navigate to="/login" replace />;
+  }
+  if (allowedRoles && !allowedRoles.includes(role)) 
+  {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
 }
