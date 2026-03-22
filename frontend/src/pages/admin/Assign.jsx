@@ -1,30 +1,34 @@
 import React, { useState } from "react";
-import api from '../api'
-
+import api from "../api";
 
 export default function AdminAssign() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [crossJoinReady, setCrossJoinReady] = useState(false);
 
-  // 🔥 STEP 1: Generate Cross Join
-async function generateCrossJoin() {
-  setLoading(true);
+  // 🔥 STEP 1: Generate Edge Weights (Cross Join)
+  async function generateCrossJoin() {
+    setLoading(true);
 
-  try {
-    console.log("Generating cross join...");
+    try {
+      console.log("Generating edge weights...");
 
-    const res = await api.post("/api/run-edge_weights/");  
+      const res = await api.post("/api/run_edge_weights/"); 
 
-    console.log(res.data);
+      console.log("Response:", res.data);
 
-    setCrossJoinReady(true);
-  } catch (err) {
-    console.error("Error generating cross join:", err);
-  } finally {
-    setLoading(false);
+      setCrossJoinReady(true);
+    } catch (err) {
+      console.error("Error generating edge weights:", err);
+
+      alert(
+        err.response?.data?.message ||
+          "Failed to generate edge weights. Check backend."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   // 🔥 STEP 2: Run Algorithm
   async function runAlgorithm(algoKey) {
@@ -32,14 +36,15 @@ async function generateCrossJoin() {
     setResult(null);
 
     try {
-      console.log(`Running ${algoKey}`);
+      console.log(`Running ${algoKey} algorithm...`);
 
-      // ✅ BACKEND
+      // ✅ Replace with actual backend when ready
       /*
       const res = await api.post(`/api/match/${algoKey}/`);
       setResult(res.data);
       */
 
+      // 🔹 Mock data (for now)
       const mockResult = [
         { id: "Paper 1", assignedReviewers: ["R1", "R2"] },
         { id: "Paper 2", assignedReviewers: ["R3", "R4"] },
@@ -48,9 +53,13 @@ async function generateCrossJoin() {
       await new Promise((res) => setTimeout(res, 1000));
 
       setResult(mockResult);
-
     } catch (err) {
-      console.error(err);
+      console.error("Algorithm error:", err);
+
+      alert(
+        err.response?.data?.message ||
+          "Algorithm failed. Check backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -60,6 +69,7 @@ async function generateCrossJoin() {
     <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
       <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
 
+      {/* 🔹 ILP Section */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
         <h3 className="text-md font-semibold text-gray-800">
           ILP-based Algorithms
@@ -68,7 +78,10 @@ async function generateCrossJoin() {
         <div>
           <button
             onClick={generateCrossJoin}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-white"
+            disabled={loading}
+            className={`rounded-xl px-4 py-2 text-white ${
+              loading ? "bg-blue-300" : "bg-blue-600"
+            }`}
           >
             Assign Paper-Reviewer edge weights
           </button>
@@ -80,13 +93,12 @@ async function generateCrossJoin() {
           )}
         </div>
 
-   
         <div className="flex gap-3">
           <button
-            disabled={!crossJoinReady}
+            disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
             className={`px-4 py-2 rounded-xl text-white ${
-              crossJoinReady
+              crossJoinReady && !loading
                 ? "bg-gray-900"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
@@ -95,10 +107,10 @@ async function generateCrossJoin() {
           </button>
 
           <button
-            disabled={!crossJoinReady}
+            disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILPR")}
             className={`px-4 py-2 rounded-xl text-white ${
-              crossJoinReady
+              crossJoinReady && !loading
                 ? "bg-gray-900"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
@@ -108,6 +120,7 @@ async function generateCrossJoin() {
         </div>
       </div>
 
+      {/* 🔹 Other Algorithms */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-3">
         <h3 className="text-md font-semibold text-gray-800">
           Other Algorithms
@@ -115,26 +128,35 @@ async function generateCrossJoin() {
 
         <div className="flex gap-3">
           <button
+            disabled={loading}
             onClick={() => runAlgorithm("NF")}
-            className="px-4 py-2 rounded-xl bg-gray-900 text-white"
+            className={`px-4 py-2 rounded-xl text-white ${
+              loading ? "bg-gray-400" : "bg-gray-900"
+            }`}
           >
             Network Flow
           </button>
 
           <button
+            disabled={loading}
             onClick={() => runAlgorithm("OTHER")}
-            className="px-4 py-2 rounded-xl bg-gray-900 text-white"
+            className={`px-4 py-2 rounded-xl text-white ${
+              loading ? "bg-gray-400" : "bg-gray-900"
+            }`}
           >
             4th Algorithm
           </button>
         </div>
       </div>
+
+      {/* 🔹 Loading */}
       {loading && (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 animate-pulse">
           Processing...
         </div>
       )}
 
+      {/* 🔹 Results */}
       {result && (
         <div className="space-y-2">
           {result.map((r) => (

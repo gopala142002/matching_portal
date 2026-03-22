@@ -2,14 +2,23 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
+
+# 🔹 Base
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-SECRET_KEY = os.getenv("SECRET_KEY")
+
+# 🔐 Security
+SECRET_KEY = os.getenv("SECRET_KEY")  # MUST be 32+ chars
 DEBUG = os.getenv("DEBUG") == "True"
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+# 🔹 ImageKit (unchanged)
 IMAGEKIT_PRIVATE_KEY = os.getenv("IMAGEKIT_PRIVATE_KEY")
 IMAGEKIT_PUBLIC_KEY = os.getenv("IMAGEKIT_PUBLIC_KEY")
 IMAGEKIT_URL_ENDPOINT = os.getenv("IMAGEKIT_URL_ENDPOINT")
+
+# 🔹 Apps
 INSTALLED_APPS = [
     "corsheaders",
     "django.contrib.admin",
@@ -18,34 +27,49 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+
     "accounts",
-    'papers',
+    "papers",
     "reviewers",
     "paperAssign",
-    'algorithms',
-    "data"
+    "algorithms",
+    "data",
 ]
 
+# 🔹 Middleware (ORDER MATTERS)
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # MUST be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",  # keep this
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# 🔥 CORS + CSRF FIX (MOST IMPORTANT)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
+CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# 🔹 URLs
 ROOT_URLCONF = "matching_portal.urls"
 
+# 🔹 Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -64,8 +88,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "matching_portal.wsgi.application"
 
-
-
+# 🔹 Database
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE"),
@@ -77,8 +100,7 @@ DATABASES = {
     }
 }
 
-
-
+# 🔹 Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -86,42 +108,36 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-
+# 🔹 Localization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-
-
+# 🔹 Static
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
-
+# 🔹 DRF
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.AllowAny",  # change to IsAuthenticated in prod
     ),
 }
 
-
-
+# 🔹 JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
-        minutes=int(os.getenv("ACCESS_TOKEN_MINUTES",10))
+        minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", 10))
     ),
-
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=int(os.getenv("REFRESH_TOKEN_DAYS", 7))
     ),
-
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
-
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
