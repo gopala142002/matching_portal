@@ -1,0 +1,8 @@
+DEBUG=True
+SECRET_KEY="gopala-patel--"
+DB_engine=django.db.backend.postgresql
+DB_NAME=matching_portal
+DB_USER=gopala
+DB_PASSWORD=1956
+DB_HOST=localhost
+DB_PORT=5432

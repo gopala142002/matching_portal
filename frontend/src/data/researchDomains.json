@@ -1,0 +1,210 @@
+{
+  "cs_domains": {
+    "Algorithms_and_Data_Structures": [
+      "algorithm",
+      "data structure",
+      "graph",
+      "tree",
+      "hashing",
+      "sorting",
+      "searching",
+      "dynamic programming",
+      "greedy",
+      "divide and conquer",
+      "complexity",
+      "approximation",
+      "NP-complete",
+      "optimization",
+      "combinatorics"
+    ],
+    "Artificial_Intelligence": [
+      "artificial intelligence",
+      "intelligent agent",
+      "reasoning",
+      "planning",
+      "knowledge representation",
+      "heuristics",
+      "search algorithm",
+      "constraint satisfaction",
+      "automated reasoning",
+      "expert systems"
+    ],
+    "Machine_Learning": [
+      "machine learning",
+      "supervised learning",
+      "unsupervised learning",
+      "reinforcement learning",
+      "classification",
+      "regression",
+      "clustering",
+      "feature engineering",
+      "model training",
+      "neural network",
+      "deep learning"
+    ],
+    "Natural_Language_Processing": [
+      "NLP",
+      "natural language processing",
+      "language model",
+      "text classification",
+      "tokenization",
+      "named entity recognition",
+      "sentiment analysis",
+      "machine translation",
+      "question answering",
+      "semantic parsing"
+    ],
+    "Computer_Vision": [
+      "computer vision",
+      "image processing",
+      "object detection",
+      "image segmentation",
+      "face recognition",
+      "visual recognition",
+      "feature extraction",
+      "CNN",
+      "image classification"
+    ],
+    "Databases": [
+      "database",
+      "query processing",
+      "SQL",
+      "NoSQL",
+      "transaction",
+      "ACID",
+      "indexing",
+      "query optimization",
+      "data warehouse",
+      "data mining"
+    ],
+    "Distributed_Systems": [
+      "distributed system",
+      "consensus",
+      "fault tolerance",
+      "replication",
+      "distributed computing",
+      "MapReduce",
+      "cluster computing",
+      "load balancing",
+      "eventual consistency",
+      "distributed storage"
+    ],
+    "Operating_Systems": [
+      "operating system",
+      "process",
+      "thread",
+      "scheduling",
+      "memory management",
+      "virtual memory",
+      "file system",
+      "deadlock",
+      "concurrency",
+      "kernel"
+    ],
+    "Computer_Networks": [
+      "computer networks",
+      "TCP/IP",
+      "routing",
+      "switching",
+      "network protocol",
+      "congestion control",
+      "wireless networks",
+      "network security",
+      "packet",
+      "software defined networking"
+    ],
+    "Cybersecurity": [
+      "cybersecurity",
+      "cryptography",
+      "encryption",
+      "authentication",
+      "authorization",
+      "malware",
+      "intrusion detection",
+      "blockchain security",
+      "secure communication",
+      "privacy"
+    ],
+    "Software_Engineering": [
+      "software engineering",
+      "software design",
+      "software architecture",
+      "design patterns",
+      "testing",
+      "debugging",
+      "version control",
+      "agile development",
+      "devops",
+      "continuous integration"
+    ],
+    "Human_Computer_Interaction": [
+      "HCI",
+      "user interface",
+      "user experience",
+      "usability",
+      "interaction design",
+      "accessibility",
+      "human centered design",
+      "visualization",
+      "user study"
+    ],
+    "Theoretical_Computer_Science": [
+      "theory of computation",
+      "automata",
+      "formal language",
+      "computability",
+      "complexity theory",
+      "turing machine",
+      "lambda calculus"
+    ],
+    "Information_Retrieval": [
+      "information retrieval",
+      "search engine",
+      "ranking",
+      "indexing",
+      "query expansion",
+      "relevance",
+      "document retrieval",
+      "BM25",
+      "semantic search"
+    ],
+    "High_Performance_Computing": [
+      "parallel computing",
+      "GPU computing",
+      "distributed memory",
+      "shared memory",
+      "MPI",
+      "OpenMP",
+      "scalability",
+      "supercomputing"
+    ],
+    "Data_Science": [
+      "data science",
+      "data analysis",
+      "big data",
+      "data visualization",
+      "statistical modeling",
+      "data pipeline",
+      "ETL",
+      "predictive analytics"
+    ],
+    "Robotics": [
+      "robotics",
+      "robot navigation",
+      "motion planning",
+      "SLAM",
+      "robot perception",
+      "autonomous systems"
+    ],
+    "Cloud_Computing": [
+      "cloud computing",
+      "virtualization",
+      "containerization",
+      "microservices",
+      "serverless",
+      "cloud storage",
+      "kubernetes",
+      "docker"
+    ]
+  }
+}
