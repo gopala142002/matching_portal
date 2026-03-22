@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 /* Public pages */
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin"
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
@@ -39,12 +40,10 @@ import EditProfile from "./pages/profile/EditProfile";
 export default function App() {
   return (
     <Routes>
-      {/* ================= Public ================= */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/adminlogin" element={<AdminLogin />} />
       <Route path="/register" element={<Register />} />
-
-      {/* ================= Author ================= */}
       <Route
         path="/author"
         element={
@@ -59,8 +58,6 @@ export default function App() {
         <Route path="submissions/:paperId" element={<SubmissionDetails />} />
         <Route index element={<Navigate to="/author/dashboard" replace />} />
       </Route>
-
-      {/* ================= Reviewer ================= */}
       <Route
         path="/reviewer"
         element={
@@ -77,7 +74,6 @@ export default function App() {
         <Route index element={<Navigate to="/reviewer/dashboard" replace />} />
       </Route>
 
-      {/* ================= Admin ================= */}
       <Route
         path="/admin"
         element={
@@ -94,7 +90,6 @@ export default function App() {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 
-      {/* ================= Edit Profile (Common) ================= */}
       <Route
         path="pages/profile/EditProfile"
         element={
@@ -103,8 +98,6 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-
-      {/* ================= Fallback ================= */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

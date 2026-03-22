@@ -1,42 +1,151 @@
 import React, { useState } from "react";
-import { runAutoAssignment } from "../../data/mockDb";
 
 export default function AdminAssign() {
   const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [crossJoinReady, setCrossJoinReady] = useState(false);
+
+  // 🔥 STEP 1: Generate Cross Join
+  async function generateCrossJoin() {
+    setLoading(true);
+
+    try {
+      console.log("Generating cross join...");
+
+      // ✅ BACKEND
+      /*
+      await api.post("/api/cross-join/");
+      */
+
+      await new Promise((res) => setTimeout(res, 1000));
+
+      setCrossJoinReady(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 🔥 STEP 2: Run Algorithm
+  async function runAlgorithm(algoKey) {
+    setLoading(true);
+    setResult(null);
+
+    try {
+      console.log(`Running ${algoKey}`);
+
+      // ✅ BACKEND
+      /*
+      const res = await api.post(`/api/match/${algoKey}/`);
+      setResult(res.data);
+      */
+
+      const mockResult = [
+        { id: "Paper 1", assignedReviewers: ["R1", "R2"] },
+        { id: "Paper 2", assignedReviewers: ["R3", "R4"] },
+      ];
+
+      await new Promise((res) => setTimeout(res, 1000));
+
+      setResult(mockResult);
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="rounded-3xl border bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold">Auto Assign Reviewers</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        Runs a mock assignment algorithm with COI filtering.
-      </p>
+    <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
+      <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
 
-      <button
-        className="mt-5 rounded-xl bg-gray-900 px-5 py-2 text-white text-sm font-medium"
-        onClick={() => {
-          const res = runAutoAssignment({ reviewersPerPaper: 2 });
-          setResult(res);
-        }}
-      >
-        Run Auto Assignment
-      </button>
+      <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
+        <h3 className="text-md font-semibold text-gray-800">
+          ILP-based Algorithms
+        </h3>
+
+        <div>
+          <button
+            onClick={generateCrossJoin}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-white"
+          >
+            Generate Cross Join
+          </button>
+
+          {crossJoinReady && (
+            <span className="ml-3 text-green-600 text-sm">
+              ✔ Ready
+            </span>
+          )}
+        </div>
+
+   
+        <div className="flex gap-3">
+          <button
+            disabled={!crossJoinReady}
+            onClick={() => runAlgorithm("ILP")}
+            className={`px-4 py-2 rounded-xl text-white ${
+              crossJoinReady
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Run ILP
+          </button>
+
+          <button
+            disabled={!crossJoinReady}
+            onClick={() => runAlgorithm("ILPR")}
+            className={`px-4 py-2 rounded-xl text-white ${
+              crossJoinReady
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Run ILP (Iterative)
+          </button>
+        </div>
+      </div>
+
+      <div className="border rounded-2xl p-4 bg-gray-50 space-y-3">
+        <h3 className="text-md font-semibold text-gray-800">
+          Other Algorithms
+        </h3>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => runAlgorithm("NF")}
+            className="px-4 py-2 rounded-xl bg-gray-900 text-white"
+          >
+            Network Flow
+          </button>
+
+          <button
+            onClick={() => runAlgorithm("OTHER")}
+            className="px-4 py-2 rounded-xl bg-gray-900 text-white"
+          >
+            4th Algorithm
+          </button>
+        </div>
+      </div>
+      {loading && (
+        <div className="text-sm text-gray-600">
+          Processing...
+        </div>
+      )}
 
       {result && (
-        <div className="mt-6 space-y-3">
-          <div className="text-sm font-medium text-gray-700">Assignment Result</div>
-          <div className="space-y-2">
-            {result.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-2xl border bg-gray-50 px-4 py-3 text-sm"
-              >
-                <div className="font-medium">{r.id}</div>
-                <div className="text-gray-600">
-                  Reviewers: {r.assignedReviewers.join(", ") || "None"}
-                </div>
+        <div className="space-y-2">
+          {result.map((r) => (
+            <div key={r.id} className="border p-3 rounded">
+              <div className="font-medium">{r.id}</div>
+              <div className="text-sm text-gray-600">
+                {r.assignedReviewers.join(", ")}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

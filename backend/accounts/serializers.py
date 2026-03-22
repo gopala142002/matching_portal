@@ -6,7 +6,6 @@ from django.contrib.auth.password_validation import validate_password
 
 from accounts.models import Researcher
 
-
 class RegisterSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
@@ -14,7 +13,6 @@ class RegisterSerializer(serializers.Serializer):
 
     name = serializers.CharField()
 
-    # ✅ FIXED: JSONB list field
     institutions = serializers.ListField(
         child=serializers.CharField(),
         allow_empty=False
@@ -23,13 +21,21 @@ class RegisterSerializer(serializers.Serializer):
     department = serializers.CharField()
     academic_position = serializers.CharField()
 
-    research_interests = serializers.JSONField()
-    keywords = serializers.JSONField()
+    research_interests = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False
+    )
+
+    keywords = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False
+    )
 
     is_reviewer = serializers.BooleanField(required=False, default=False)
 
 
     def validate_email(self, value):
+        value = value.lower()
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Email already registered")
         return value
@@ -41,20 +47,17 @@ class RegisterSerializer(serializers.Serializer):
 
 
     def validate_keywords(self, value):
-
-        if isinstance(value, str):
-            value = value.split(",")
-
         cleaned = [v.strip().lower() for v in value if v.strip()]
         return list(dict.fromkeys(cleaned))
 
 
     def validate_research_interests(self, value):
-
-        if isinstance(value, str):
-            value = value.split(",")
-
         cleaned = [v.strip().lower() for v in value if v.strip()]
+        return list(dict.fromkeys(cleaned))
+
+
+    def validate_institutions(self, value):
+        cleaned = [v.strip() for v in value if v.strip()]
         return list(dict.fromkeys(cleaned))
 
 
@@ -69,10 +72,10 @@ class RegisterSerializer(serializers.Serializer):
             password=validated_data["password"]
         )
 
-        researcher = Researcher.objects.create(
+        Researcher.objects.create(
             user=user,
             name=validated_data["name"],
-            institutions=validated_data["institutions"],   # ✅ FIXED
+            institutions=validated_data["institutions"],
             department=validated_data["department"],
             academic_position=validated_data["academic_position"],
             research_interests=validated_data["research_interests"],
@@ -91,7 +94,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
 
-        email = data.get("email")
+        email = data.get("email").lower()
         password = data.get("password")
 
         if not email or not password:
@@ -100,19 +103,18 @@ class LoginSerializer(serializers.Serializer):
         try:
             user_obj = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid credentials")
+            raise serializers.ValidationError("Invalid email or password")
 
         user = authenticate(username=user_obj.username, password=password)
 
         if not user:
-            raise serializers.ValidationError("Invalid credentials")
+            raise serializers.ValidationError("Invalid email or password")
 
         if not user.is_active:
-            raise serializers.ValidationError("This account is disabled")
+            raise serializers.ValidationError("Account is disabled")
 
         data["user"] = user
         return data
-
 
 class ResearcherSerializer(serializers.ModelSerializer):
 
@@ -124,7 +126,7 @@ class ResearcherSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "email",
-            "institutions",   # ✅ FIXED
+            "institutions",
             "department",
             "academic_position",
             "research_interests",
@@ -132,9 +134,11 @@ class ResearcherSerializer(serializers.ModelSerializer):
             "h_index",
             "is_reviewer",
         ]
+        read_only_fields = ["id", "email"]
 
 
 class UpdateReviewerStatusSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Researcher
         fields = ["is_reviewer"]

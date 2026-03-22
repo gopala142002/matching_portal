@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRole, setRole, clearRole } from "../data/mockDb";
-import api from "../pages/api"
+import api from "../pages/api";
 
 export default function Navbar({ title, onMenuClick }) {
   const navigate = useNavigate();
   const role = getRole();
-  const access = localStorage.getItem("access")
+  const isAdmin = localStorage.getItem("is_admin") === "true"; // ✅ NEW
+  const access = localStorage.getItem("access");
   const [open, setOpen] = useState(false);
 
   const roleMap = {
@@ -15,47 +16,33 @@ export default function Navbar({ title, onMenuClick }) {
     admin: "/admin/dashboard",
   };
 
-
   async function handleLogout() {
     try {
       const refresh = localStorage.getItem("refresh");
       const access = localStorage.getItem("access");
 
-      if (!refresh) {
-        console.log("No refresh token found");
-        return;
+      if (refresh) {
+        await api.post(
+          "/api/auth/logout/",
+          { refresh },
+          {
+            headers: {
+              Authorization: `Bearer ${access}`,
+            },
+          }
+        );
       }
-
-      const payload = { refresh };
-
-      const res = await api.post(
-        "/api/auth/logout/",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${access}`,
-          },
-        }
-      );
-
-      console.log("Logout successful:", res.data);
-
-      // ✅ Clear tokens
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-
-      navigate("/");
-
     } catch (err) {
       console.error("Logout error:", err.response?.data || err);
+    } finally {
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      localStorage.removeItem("is_admin"); // ✅ NEW
+      clearRole();
 
-      // Even if backend fails, clear tokens anyway
-      localStorage.clear();
       navigate("/login");
     }
   }
-
-
 
 
   function switchRole(newRole) {
@@ -63,13 +50,18 @@ export default function Navbar({ title, onMenuClick }) {
       setOpen(false);
       return;
     }
-    setRole(newRole);          // update role in localStorage
-    setOpen(false);            // close dropdown
-    navigate(roleMap[newRole]); // redirect to dashboard
+
+    setRole(newRole);
+    setOpen(false);
+    navigate(roleMap[newRole]);
   }
+
+  const availableRoles = ["author", "reviewer"];
+
   return (
     <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-white px-4 py-3">
-      {/* Left section */}
+      
+
       <div className="flex items-center gap-3">
         <button
           className="md:hidden rounded-lg border px-3 py-2 text-sm"
@@ -77,20 +69,19 @@ export default function Navbar({ title, onMenuClick }) {
         >
           Menu
         </button>
+
         <div>
           <div className="text-sm text-gray-500">Conference Portal</div>
           <div className="text-lg font-semibold text-gray-900">{title}</div>
         </div>
       </div>
 
-      {/* Right section */}
       <div className="flex items-center gap-3">
-        {/* Role Switcher */}
-        {role && (
+        {role && !isAdmin && (
           <div className="relative">
             <button
               onClick={() => setOpen(!open)}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white hover:cursor-pointer"
+              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white"
             >
               {role.charAt(0).toUpperCase() + role.slice(1)}
               <span className="text-xs">▼</span>
@@ -98,11 +89,11 @@ export default function Navbar({ title, onMenuClick }) {
 
             {open && (
               <div className="absolute right-0 mt-2 w-40 py-1 rounded-md border bg-white shadow-lg">
-                {["author", "reviewer", "admin"].map((r) => (
+                {availableRoles.map((r) => (
                   <button
                     key={r}
                     onClick={() => switchRole(r)}
-                    className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 hover:cursor-pointer"
+                    className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                   >
                     {r.charAt(0).toUpperCase() + r.slice(1)}
                   </button>
@@ -112,20 +103,24 @@ export default function Navbar({ title, onMenuClick }) {
           </div>
         )}
 
-        {/* Logout / Login */}
+
+        {/* {isAdmin && (
+          <span className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm">
+            Admin
+          </span>
+        )} */}
+
+        {/* LOGOUT / LOGIN */}
         {access ? (
           <button
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"
-            onClick={() => {
-              // clearRole();
-              handleLogout();
-            }}
+            onClick={handleLogout}
           >
             Logout
           </button>
         ) : (
           <button
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white cursor-pointer"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"
             onClick={() => navigate("/login")}
           >
             Login

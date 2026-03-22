@@ -9,10 +9,10 @@ from accounts.serializers import (
     RegisterSerializer,
     LoginSerializer,
     ResearcherSerializer,
+    UpdateReviewerStatusSerializer,   # ✅ added
 )
 
 from accounts.models import Researcher
-
 
 
 @api_view(["POST"])
@@ -38,7 +38,6 @@ def register(request):
         )
 
     user = serializer.save()
-
     refresh = RefreshToken.for_user(user)
 
     return Response(
@@ -47,11 +46,10 @@ def register(request):
             "message": "User registered successfully",
             "refresh": str(refresh),
             "access": str(refresh.access_token),
+            "is_admin": user.is_staff,
         },
         status=status.HTTP_201_CREATED
     )
-
-
 
 @api_view(["POST"])
 def login_view(request):
@@ -61,13 +59,12 @@ def login_view(request):
         return Response(
             {
                 "status": False,
-                "errors": serializer.errors
+                "message": serializer.errors.get("non_field_errors", ["Invalid input"])[0]
             },
             status=status.HTTP_401_UNAUTHORIZED
         )
 
     user = serializer.validated_data["user"]
-
     refresh = RefreshToken.for_user(user)
 
     return Response(
@@ -76,10 +73,10 @@ def login_view(request):
             "message": "Login successful",
             "refresh": str(refresh),
             "access": str(refresh.access_token),
+            "is_admin": user.is_staff,
         },
         status=status.HTTP_200_OK
     )
-
 
 
 @api_view(["GET"])
@@ -89,12 +86,11 @@ def verify_token(request):
         {
             "status": True,
             "message": "Token is valid",
-            "user": request.user.email
+            "email": request.user.email,
+            "is_admin": request.user.is_staff,
         },
         status=status.HTTP_200_OK
     )
-
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -113,7 +109,8 @@ def profile(request):
     return Response(
         {
             "status": True,
-            "profile": ResearcherSerializer(researcher).data
+            "profile": ResearcherSerializer(researcher).data,
+            "is_admin": request.user.is_staff,   # ✅ added
         },
         status=status.HTTP_200_OK
     )
@@ -126,24 +123,23 @@ def logout_view(request):
 
     if not refresh_token:
         return Response(
-            {"detail": "Refresh token required"},
+            {"status": False, "message": "Refresh token required"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
     try:
         token = RefreshToken(refresh_token)
         token.blacklist()
-    except Exception:
+    except Exception as e:
         return Response(
-            {"detail": "Invalid refresh token"},
+            {"status": False, "message": "Invalid refresh token"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
     return Response(
-        {"detail": "Logged out successfully"},
+        {"status": True, "message": "Logged out successfully"},
         status=status.HTTP_200_OK
     )
-
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
@@ -176,5 +172,30 @@ def update_reviewer_status(request):
             "status": True,
             "message": "Reviewer status updated",
             "is_reviewer": serializer.data["is_reviewer"]
-        }
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def run_matching_algorithm(request):
+
+    if not request.user.is_staff:
+        return Response(
+            {"status": False, "message": "Only admin allowed"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # 👉 TODO: Add your matching logic here
+    # Example:
+    # match_papers_to_reviewers()
+
+    return Response(
+        {
+            "status": True,
+            "message": "Matching algorithm executed successfully"
+        },
+        status=status.HTTP_200_OK
     )

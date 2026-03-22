@@ -9,7 +9,7 @@ class Researcher(models.Model):
         on_delete=models.CASCADE,
         related_name="researcher"
     )
-
+    
     name = models.CharField(max_length=255)
     institutions = models.JSONField(default=list)
     department = models.CharField(max_length=255)

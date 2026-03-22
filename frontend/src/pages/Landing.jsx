@@ -67,12 +67,18 @@ export default function Landing() {
             >
               Author / Reviewer Login
             </Link>
-
             <Link
               to="/register"
-              className="rounded-xl border px-6 py-3 text-gray-900 text-sm font-medium"
+              className="rounded-xl bg-gray-900 px-6 py-3 text-white text-sm font-medium"
             >
               New Author Registration
+            </Link>
+
+            <Link
+              to="/adminlogin"
+              className="rounded-xl border bg-gray-200 px-6 py-3 text-black text-sm font-medium"
+            >
+              Admin Login
             </Link>
           </div>
         </section>
