@@ -3,22 +3,19 @@ from datetime import timedelta
 import os
 from dotenv import load_dotenv
 
-# 🔹 Base
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# 🔐 Security
-SECRET_KEY = os.getenv("SECRET_KEY")  # MUST be 32+ chars
+SECRET_KEY = os.getenv("SECRET_KEY") 
 DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# 🔹 ImageKit (unchanged)
 IMAGEKIT_PRIVATE_KEY = os.getenv("IMAGEKIT_PRIVATE_KEY")
 IMAGEKIT_PUBLIC_KEY = os.getenv("IMAGEKIT_PUBLIC_KEY")
 IMAGEKIT_URL_ENDPOINT = os.getenv("IMAGEKIT_URL_ENDPOINT")
 
-# 🔹 Apps
+
 INSTALLED_APPS = [
     "corsheaders",
     "django.contrib.admin",
@@ -41,19 +38,19 @@ INSTALLED_APPS = [
     "data",
 ]
 
-# 🔹 Middleware (ORDER MATTERS)
+
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # MUST be first
+    "corsheaders.middleware.CorsMiddleware",  
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",  # keep this
+    "django.middleware.csrf.CsrfViewMiddleware",  
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# 🔥 CORS + CSRF FIX (MOST IMPORTANT)
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -66,10 +63,9 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-# 🔹 URLs
+
 ROOT_URLCONF = "matching_portal.urls"
 
-# 🔹 Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -88,7 +84,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "matching_portal.wsgi.application"
 
-# 🔹 Database
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE"),
@@ -108,27 +103,24 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# 🔹 Localization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# 🔹 Static
+
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# 🔹 DRF
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",  # change to IsAuthenticated in prod
+        "rest_framework.permissions.AllowAny",  
     ),
 }
 
-# 🔹 JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=int(os.getenv("ACCESS_TOKEN_MINUTES", 10))

@@ -5,8 +5,6 @@ export default function AdminAssign() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [crossJoinReady, setCrossJoinReady] = useState(false);
-
-  // 🔥 STEP 1: Generate Edge Weights (Cross Join)
   async function generateCrossJoin() {
     setLoading(true);
 
@@ -30,46 +28,47 @@ export default function AdminAssign() {
     }
   }
 
-  // 🔥 STEP 2: Run Algorithm
-  async function runAlgorithm(algoKey) {
-    setLoading(true);
-    setResult(null);
+async function runAlgorithm(algoKey) {
+  setLoading(true);
+  setResult(null);
 
-    try {
-      console.log(`Running ${algoKey} algorithm...`);
+  try {
+    console.log(`Running ${algoKey} algorithm...`);
 
-      // ✅ Replace with actual backend when ready
-      /*
-      const res = await api.post(`/api/match/${algoKey}/`);
-      setResult(res.data);
-      */
+    let endpoint = "";
 
-      // 🔹 Mock data (for now)
-      const mockResult = [
-        { id: "Paper 1", assignedReviewers: ["R1", "R2"] },
-        { id: "Paper 2", assignedReviewers: ["R3", "R4"] },
-      ];
-
-      await new Promise((res) => setTimeout(res, 1000));
-
-      setResult(mockResult);
-    } catch (err) {
-      console.error("Algorithm error:", err);
-
-      alert(
-        err.response?.data?.message ||
-          "Algorithm failed. Check backend."
-      );
-    } finally {
-      setLoading(false);
+    if (algoKey === "ILP" || algoKey === "ILPR") 
+    {
+      endpoint = "/api/run_matching/";
+    } 
+    else if (algoKey === "NF") 
+    {
+      endpoint = "/api/run_network_flow/"; 
+    } 
+    else 
+    {
+      endpoint = "/api/run_other/"; 
     }
+
+    const res = await api.post(endpoint);
+    console.log("Result:", res.data);
+    setResult(res.data);
+
+  } catch (err) {
+    console.error("Algorithm error:", err);
+
+    alert(
+      err.response?.data?.message ||
+      "Algorithm failed. Check backend."
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
       <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
-
-      {/* 🔹 ILP Section */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
         <h3 className="text-md font-semibold text-gray-800">
           ILP-based Algorithms

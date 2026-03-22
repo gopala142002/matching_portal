@@ -5,7 +5,6 @@ const api = axios.create({
 });
 
 
-// ✅ Attach access token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
 
@@ -17,14 +16,11 @@ api.interceptors.request.use((config) => {
 });
 
 
-// ✅ Auto refresh access token when expired
 api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
     const originalRequest = error.config;
-
-    // If token expired → 401
     if (
       error.response?.status === 401 &&
       !originalRequest._retry
@@ -37,19 +33,13 @@ api.interceptors.response.use(
         if (!refreshToken) {
           throw new Error("No refresh token found");
         }
-
-        // ✅ Refresh must be POST, not GET
         const res = await axios.post(
           "http://127.0.0.1:8000/api/auth/token/refresh/",
           {
             refresh: refreshToken,
           }
         );
-
-        // Save new access token
         localStorage.setItem("access", res.data.access);
-
-        // Retry original request
         originalRequest.headers.Authorization =
           `Bearer ${res.data.access}`;
 
