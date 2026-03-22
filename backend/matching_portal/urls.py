@@ -8,5 +8,6 @@ urlpatterns = [
     path("api/papers/", include("papers.urls")),
     path("api/reviewers/", include("reviewers.urls")),
     path("api/paperassign/",include("paperAssign.urls")),
+    path('api/', include('algorithms.urls')),
     path("api/data/",include("data.urls"))
 ]
