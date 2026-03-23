@@ -5,8 +5,6 @@ export default function AdminAssign() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [crossJoinReady, setCrossJoinReady] = useState(false);
-
-  // 🔥 STEP 1: Check if edge weight table exists on load
   useEffect(() => {
     async function checkTable() {
       try {
@@ -21,10 +19,7 @@ export default function AdminAssign() {
 
     checkTable();
   }, []);
-
-  // 🔥 STEP 2: Generate Edge Weights
   async function generateCrossJoin() {
-    // ⚠️ Confirmation if already exists
     if (crossJoinReady) {
       const confirmAction = window.confirm(
         "Edge weights already exist. Regenerating will overwrite and may take time. Continue?"
@@ -52,8 +47,6 @@ export default function AdminAssign() {
       setLoading(false);
     }
   }
-
-  // 🔥 STEP 3: Run Algorithms
   async function runAlgorithm(algoKey) {
     setLoading(true);
     setResult(null);
@@ -63,9 +56,13 @@ export default function AdminAssign() {
 
       let endpoint = "";
 
-      if (algoKey === "ILP" || algoKey === "ILPR") {
-        endpoint = "/api/run_matching/";
-      } else if (algoKey === "NF") {
+      if (algoKey === "ILP") {
+        endpoint = "/api/run_ilp/";
+      }
+      else if(algoKey === "ILPR"){
+        endpoint="/api/run_ilpr/"
+      }
+      else if (algoKey === "NF") {
         endpoint = "/api/run_network_flow/";
       } else {
         endpoint = "/api/run_other/";
@@ -89,8 +86,6 @@ export default function AdminAssign() {
   return (
     <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
       <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
-
-      {/* 🔹 ILP Section */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
         <h3 className="text-md font-semibold text-gray-800">
           ILP-based Algorithms
@@ -113,7 +108,6 @@ export default function AdminAssign() {
         </div>
 
         <div className="flex gap-3">
-          {/* ✅ ILP */}
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
@@ -125,8 +119,6 @@ export default function AdminAssign() {
           >
             Run ILP
           </button>
-
-          {/* ✅ ILP Iterative */}
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILPR")}
@@ -140,8 +132,6 @@ export default function AdminAssign() {
           </button>
         </div>
       </div>
-
-      {/* 🔹 Other Algorithms */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-3">
         <h3 className="text-md font-semibold text-gray-800">
           Other Algorithms
@@ -169,15 +159,11 @@ export default function AdminAssign() {
           </button>
         </div>
       </div>
-
-      {/* 🔹 Loading */}
       {loading && (
         <div className="text-sm text-gray-600 animate-pulse">
           Processing...
         </div>
       )}
-
-      {/* 🔹 Results */}
       {result && (
         <div className="space-y-2">
           {result.map((r) => (

@@ -4,12 +4,12 @@ from rest_framework.response import Response
 from django.db import connection
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
+from .services.ILP_with_iterative_rounding import main_iterative as run_ilpr
 from django.http import JsonResponse
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def run_matching(request):
+def run_matching_with_ILP(request):
     return Response(run_ilp())
 
 
@@ -17,6 +17,11 @@ def run_matching(request):
 @permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     return Response(run_similarity())
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_matching_with_iterative_rounding(request):
+    return Response(run_ilpr)
 
 
 def check_edge_weight_table(request):
