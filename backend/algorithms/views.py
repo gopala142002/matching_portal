@@ -8,13 +8,8 @@ from .services.ILP_with_iterative_rounding import main_iterative as run_ilpr
 from django.http import JsonResponse
 
 @api_view(['POST'])
-<<<<<<< HEAD
-@permission_classes([IsAuthenticated])
-def run_matching_with_ILP(request):
-=======
 # @permission_classes([IsAuthenticated])
 def run_matching(request):
->>>>>>> d3962a6cc04ea9532f46c95b59b00616b185b092
     return Response(run_ilp())
 
 

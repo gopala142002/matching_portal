@@ -35,6 +35,10 @@ export default function Sidebar({ role, open, onClose }) {
       { to: "/admin/submissions", label: "All Submissions" },
       { to: "/admin/reviewers", label: "Reviewers" },
       { to: "/admin/assign", label: "Auto Assign" },
+
+      // 🔥 NEW FEATURE
+      { to: "/admin/assignments", label: "Show Assignment" },
+
       { to: "/admin/decisions", label: "Decisions" },
     ],
   };
