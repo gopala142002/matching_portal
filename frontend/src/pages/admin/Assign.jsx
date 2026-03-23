@@ -94,12 +94,12 @@ async function runAlgorithm(algoKey) {
 
         <div className="flex gap-3">
           <button
-            disabled={!crossJoinReady || loading}
+            // disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
             className={`px-4 py-2 rounded-xl text-white ${
-              crossJoinReady && !loading
-                ? "bg-gray-900"
-                : "bg-gray-400 cursor-not-allowed"
+              // crossJoinReady && !loading
+                "bg-gray-900"
+              // "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Run ILP
@@ -110,8 +110,8 @@ async function runAlgorithm(algoKey) {
             onClick={() => runAlgorithm("ILPR")}
             className={`px-4 py-2 rounded-xl text-white ${
               crossJoinReady && !loading
-                ? "bg-gray-900"
-                : "bg-gray-400 cursor-not-allowed"
+                ?"bg-gray-900":
+                "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Run ILP (Iterative)
