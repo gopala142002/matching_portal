@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 /* Public pages */
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import AdminLogin from "./pages/AdminLogin"
+import AdminLogin from "./pages/AdminLogin";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
@@ -33,19 +33,23 @@ import AdminSubmissions from "./pages/admin/Submissions";
 import AdminReviewers from "./pages/admin/Reviewers";
 import AdminAssign from "./pages/admin/Assign";
 import AdminDecisions from "./pages/admin/Decisions";
+import ShowAssignments from "./pages/admin/ShowAssignments";
 
-/* Common Profile */
+/* Profile */
 import EditProfile from "./pages/profile/EditProfile";
 
 export default function App() {
   return (
     <Routes>
+      {/* PUBLIC */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/adminlogin" element={<AdminLogin />} />
       <Route path="/register" element={<Register />} />
+
+      {/* AUTHOR */}
       <Route
-        path="/author"
+        path="/author/*"
         element={
           <ProtectedRoute allowedRoles={["author"]}>
             <AuthorLayout />
@@ -56,10 +60,12 @@ export default function App() {
         <Route path="submit" element={<SubmitPaper />} />
         <Route path="submissions" element={<AuthorSubmissions />} />
         <Route path="submissions/:paperId" element={<SubmissionDetails />} />
-        <Route index element={<Navigate to="/author/dashboard" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
+
+      {/* REVIEWER */}
       <Route
-        path="/reviewer"
+        path="/reviewer/*"
         element={
           <ProtectedRoute allowedRoles={["reviewer"]}>
             <ReviewerLayout />
@@ -71,11 +77,12 @@ export default function App() {
         <Route path="assigned" element={<ReviewerAssigned />} />
         <Route path="paper/:paperId" element={<ReviewerPaperDetails />} />
         <Route path="review/:paperId" element={<ReviewForm />} />
-        <Route index element={<Navigate to="/reviewer/dashboard" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
+      {/* ADMIN */}
       <Route
-        path="/admin"
+        path="/admin/*"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminLayout />
@@ -87,17 +94,24 @@ export default function App() {
         <Route path="reviewers" element={<AdminReviewers />} />
         <Route path="assign" element={<AdminAssign />} />
         <Route path="decisions" element={<AdminDecisions />} />
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+
+        {/* 🔥 YOUR NEW PAGE */}
+        <Route path="assignments" element={<ShowAssignments />} />
+
+        <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
+      {/* PROFILE */}
       <Route
-        path="pages/profile/EditProfile"
+        path="/profile"
         element={
           <ProtectedRoute allowedRoles={["author", "reviewer", "admin"]}>
             <EditProfile />
           </ProtectedRoute>
         }
       />
+
+      {/* FALLBACK */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
