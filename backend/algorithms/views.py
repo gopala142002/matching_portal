@@ -8,29 +8,29 @@ from django.http import JsonResponse
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def run_matching(request):
     return Response(run_ilp())
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     return Response(run_similarity())
 
 
 def check_edge_weight_table(request):
-    table_name = "paper_to_reviewer"
 
     with connection.cursor() as cursor:
         tables = connection.introspection.table_names()
 
-        if table_name not in tables:
+        if 'paper_to_reviewer' not in tables:
             return JsonResponse({
                 "doesExist": False,
             })
-    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1);")
-    has_data = cursor.fetchone()[0]
+
+        cursor.execute('''SELECT EXISTS (SELECT 1 FROM paper_to_reviewer LIMIT 1);''')
+        has_data = cursor.fetchone()[0]
+
     return JsonResponse({
-        "doesExist":  has_data
+        "doesExist": has_data
     })
