@@ -8,13 +8,17 @@ from .services.ILP_with_iterative_rounding import main_iterative as run_ilpr
 from django.http import JsonResponse
 
 @api_view(['POST'])
+<<<<<<< HEAD
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
+=======
+# @permission_classes([IsAuthenticated])
+def run_matching(request):
+>>>>>>> d3962a6cc04ea9532f46c95b59b00616b185b092
     return Response(run_ilp())
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     return Response(run_similarity())
 
@@ -25,17 +29,18 @@ def run_matching_with_iterative_rounding(request):
 
 
 def check_edge_weight_table(request):
-    table_name = "paper_to_reviewer"
 
     with connection.cursor() as cursor:
         tables = connection.introspection.table_names()
 
-        if table_name not in tables:
+        if 'paper_to_reviewer' not in tables:
             return JsonResponse({
                 "doesExist": False,
             })
-    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1);")
-    has_data = cursor.fetchone()[0]
+
+        cursor.execute('''SELECT EXISTS (SELECT 1 FROM paper_to_reviewer LIMIT 1);''')
+        has_data = cursor.fetchone()[0]
+
     return JsonResponse({
-        "doesExist":  has_data
+        "doesExist": has_data
     })
