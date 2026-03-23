@@ -1,9 +1,10 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
+from django.db import connection
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
+from django.http import JsonResponse
 
 
 @api_view(['POST'])
@@ -16,3 +17,20 @@ def run_matching(request):
 @permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     return Response(run_similarity())
+
+
+def check_edge_weight_table(request):
+    table_name = "paper_to_reviewer"
+
+    with connection.cursor() as cursor:
+        tables = connection.introspection.table_names()
+
+        if table_name not in tables:
+            return JsonResponse({
+                "doesExist": False,
+            })
+    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1);")
+    has_data = cursor.fetchone()[0]
+    return JsonResponse({
+        "doesExist":  has_data
+    })

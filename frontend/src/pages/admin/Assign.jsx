@@ -1,18 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api";
 
 export default function AdminAssign() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [crossJoinReady, setCrossJoinReady] = useState(false);
+
+  // 🔥 STEP 1: Check if edge weight table exists on load
+  useEffect(() => {
+    async function checkTable() {
+      try {
+        const res = await api.get("/api/check_edge_weight_table/");
+        if (res.data.doesExist) {
+          setCrossJoinReady(true);
+        }
+      } catch (err) {
+        console.error("Error checking table:", err);
+      }
+    }
+
+    checkTable();
+  }, []);
+
+  // 🔥 STEP 2: Generate Edge Weights
   async function generateCrossJoin() {
+    // ⚠️ Confirmation if already exists
+    if (crossJoinReady) {
+      const confirmAction = window.confirm(
+        "Edge weights already exist. Regenerating will overwrite and may take time. Continue?"
+      );
+      if (!confirmAction) return;
+    }
+
     setLoading(true);
 
     try {
       console.log("Generating edge weights...");
 
-      const res = await api.post("/api/run_edge_weights/"); 
-
+      const res = await api.post("/api/run_edge_weights/");
       console.log("Response:", res.data);
 
       setCrossJoinReady(true);
@@ -28,47 +53,44 @@ export default function AdminAssign() {
     }
   }
 
-async function runAlgorithm(algoKey) {
-  setLoading(true);
-  setResult(null);
+  // 🔥 STEP 3: Run Algorithms
+  async function runAlgorithm(algoKey) {
+    setLoading(true);
+    setResult(null);
 
-  try {
-    console.log(`Running ${algoKey} algorithm...`);
+    try {
+      console.log(`Running ${algoKey} algorithm...`);
 
-    let endpoint = "";
+      let endpoint = "";
 
-    if (algoKey === "ILP" || algoKey === "ILPR") 
-    {
-      endpoint = "/api/run_matching/";
-    } 
-    else if (algoKey === "NF") 
-    {
-      endpoint = "/api/run_network_flow/"; 
-    } 
-    else 
-    {
-      endpoint = "/api/run_other/"; 
+      if (algoKey === "ILP" || algoKey === "ILPR") {
+        endpoint = "/api/run_matching/";
+      } else if (algoKey === "NF") {
+        endpoint = "/api/run_network_flow/";
+      } else {
+        endpoint = "/api/run_other/";
+      }
+
+      const res = await api.post(endpoint);
+      console.log("Result:", res.data);
+      setResult(res.data);
+    } catch (err) {
+      console.error("Algorithm error:", err);
+
+      alert(
+        err.response?.data?.message ||
+          "Algorithm failed. Check backend."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const res = await api.post(endpoint);
-    console.log("Result:", res.data);
-    setResult(res.data);
-
-  } catch (err) {
-    console.error("Algorithm error:", err);
-
-    alert(
-      err.response?.data?.message ||
-      "Algorithm failed. Check backend."
-    );
-  } finally {
-    setLoading(false);
   }
-}
 
   return (
     <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
       <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
+
+      {/* 🔹 ILP Section */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
         <h3 className="text-md font-semibold text-gray-800">
           ILP-based Algorithms
@@ -86,32 +108,32 @@ async function runAlgorithm(algoKey) {
           </button>
 
           {crossJoinReady && (
-            <span className="ml-3 text-green-600 text-sm">
-              ✔ Ready
-            </span>
+            <span className="ml-3 text-green-600 text-sm">✔ Ready</span>
           )}
         </div>
 
         <div className="flex gap-3">
+          {/* ✅ ILP */}
           <button
-            // disabled={!crossJoinReady || loading}
+            disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
             className={`px-4 py-2 rounded-xl text-white ${
-              // crossJoinReady && !loading
-                "bg-gray-900"
-              // "bg-gray-400 cursor-not-allowed"
+              crossJoinReady && !loading
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Run ILP
           </button>
 
+          {/* ✅ ILP Iterative */}
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILPR")}
             className={`px-4 py-2 rounded-xl text-white ${
               crossJoinReady && !loading
-                ?"bg-gray-900":
-                "bg-gray-400 cursor-not-allowed"
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Run ILP (Iterative)
