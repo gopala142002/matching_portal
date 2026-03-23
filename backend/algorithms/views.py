@@ -20,6 +20,7 @@ def run_matching(request):
 
 
 @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     return Response(run_similarity())
 
