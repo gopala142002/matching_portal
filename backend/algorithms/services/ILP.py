@@ -270,8 +270,11 @@ def save_allocation(x):
         with connection.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS final_assignment (
-                    paper_id      BIGINT,
-                    researcher_id BIGINT
+                    paper_id        BIGINT,
+                    researcher_id   BIGINT,
+                    reviewer_status VARCHAR(50) DEFAULT 'Pending',
+                    score           BIGINT,
+                    comments        TEXT
                 )
             """)
             cursor.execute("DELETE FROM final_assignment")
@@ -280,6 +283,11 @@ def save_allocation(x):
                 INSERT INTO final_assignment (paper_id, researcher_id)
                 VALUES (%s, %s)
             """, assignments)
+
+            cursor.execute("""
+                UPDATE papers
+                SET status = 'Under review'
+            """)
 
     print(f"  Saved {len(assignments)} assignments.")
     return assignments

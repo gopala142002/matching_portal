@@ -234,8 +234,11 @@ def save_iterative_allocation(assignments):
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS final_assignment (
-                    paper_id BIGINT,
-                    researcher_id BIGINT
+                    paper_id        BIGINT,
+                    researcher_id   BIGINT,
+                    reviewer_status VARCHAR(50) DEFAULT 'Pending',
+                    score           BIGINT,
+                    comments        TEXT
                 )
             """)
 
@@ -246,7 +249,12 @@ def save_iterative_allocation(assignments):
                 VALUES (%s, %s)
             """, rows)
 
-    print(f"💾 Saved {len(rows)} assignments.")
+            cursor.execute("""
+                UPDATE papers
+                SET status = 'Under review'
+            """)
+
+    print(f" Saved {len(rows)} assignments.")
     return rows
 
 
