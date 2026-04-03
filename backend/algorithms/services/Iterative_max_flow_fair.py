@@ -1,14 +1,14 @@
 """
-Max-Min Fair Paper-Reviewer Assignment (DB Integrated + Progress Bars + main())
+Max-Min Fair Paper-Reviewer Assignment (FINAL FIXED VERSION)
 """
 
 from collections import defaultdict
-from django.db import connection
+from django.db import connection, transaction
 from tqdm import tqdm
 
 
 # ---------------------------------------------------------------------------
-# DATA LOADING FROM DATABASE
+# DATA LOADING FROM DATABASE (FIXED)
 # ---------------------------------------------------------------------------
 
 def load_paper_reviewer_edges():
@@ -20,7 +20,8 @@ def load_paper_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    return [(str(p), str(r), float(s)) for p, r, s in rows]
+    # ✅ SAFE unpacking (fixes your error)
+    return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
 
 
 def load_reviewer_reviewer_edges():
@@ -32,7 +33,8 @@ def load_reviewer_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    return [(str(a), str(b), float(w)) for a, b, w in rows]
+    # ✅ SAFE unpacking
+    return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
 
 
 # ---------------------------------------------------------------------------
@@ -215,22 +217,21 @@ class MaxMinReviewerAssignment:
 
         return best_assignments, best_total_weights, best_min
 
+
+# ---------------------------------------------------------------------------
+# SAVE FUNCTION (NEW)
+# ---------------------------------------------------------------------------
+
 def save_iterative_allocation(assignments):
-    """
-    Save iterative assignment output into final_assignment table.
-
-    assignments: dict {paper_id: [reviewer_id, ...]}
-    """
-
     rows = []
+
     for paper, reviewers in assignments.items():
         for reviewer in reviewers:
-            rows.append((int(paper), int(reviewer)))  # convert back to int
+            rows.append((int(paper), int(reviewer)))
 
     with transaction.atomic():
         with connection.cursor() as cursor:
 
-            # Create table if not exists
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS final_assignment (
                     paper_id BIGINT,
@@ -238,21 +239,19 @@ def save_iterative_allocation(assignments):
                 )
             """)
 
-            # Clear old assignments
             cursor.execute("DELETE FROM final_assignment")
 
-            # Insert new assignments
             cursor.executemany("""
                 INSERT INTO final_assignment (paper_id, researcher_id)
                 VALUES (%s, %s)
             """, rows)
 
-    print(f"💾 Saved {len(rows)} assignments to final_assignment table.")
+    print(f"💾 Saved {len(rows)} assignments.")
     return rows
 
 
 # ---------------------------------------------------------------------------
-# MAIN FUNCTION (IMPORTANT FIX)
+# MAIN FUNCTION
 # ---------------------------------------------------------------------------
 
 def main():
@@ -267,26 +266,20 @@ def main():
     solver = MaxMinReviewerAssignment(
         pr_edges,
         rr_edges,
-        k=2,
-        c=3
+        k=3,
+        c=6
     )
 
     assignments, total_weights, best_min = solver.run()
 
-    print("\n📊 Final Assignments:")
-    for paper in sorted(assignments):
-        print(f"{paper}: {assignments[paper]} | total = {total_weights[paper]:.3f}")
+    print(f"\nMax-Min Score = {best_min:.4f}")
 
-    print(f"\n🏆 Max-Min Score = {best_min:.4f}")
-
-    # ✅ SAVE TO DATABASE
-    saved_rows = save_iterative_allocation(assignments)
+    save_iterative_allocation(assignments)
 
     return {
         "assignments": assignments,
         "total_weights": total_weights,
         "score": best_min,
-        "saved_count": len(saved_rows)
     }
 
 
