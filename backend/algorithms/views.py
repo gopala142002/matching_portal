@@ -26,9 +26,16 @@ def run_matching_with_ILP(request):
         return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Iterative rounding matcher  (LP rounding + ILP fallback)
-# ---------------------------------------------------------------------------
+@api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+def run_matching(request):
+    return Response(run_ilp())
+
+
+@api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+def run_similarity_api(request):
+    return Response(run_similarity())
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
