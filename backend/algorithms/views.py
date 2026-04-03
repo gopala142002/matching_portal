@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
 from .services.ILP_with_iterative_rounding import main as run_ilpr
+from .services.Iterative_max_flow_fair import main as run_iterative_assignment
 
 
 # ---------------------------------------------------------------------------
@@ -24,6 +25,16 @@ def run_matching_with_ILP(request):
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
+    
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_iterative_assignment(request):
+    try:
+        result=run_iterative_assignment()
+        return Response(result)
+    except Exception as e:
+        return Response({"status":"error","message":str(e)}, status=500)
 
 
 @api_view(['POST'])

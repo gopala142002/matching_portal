@@ -64,8 +64,8 @@ export default function AdminAssign() {
       }
       else if (algoKey === "NF") {
         endpoint = "/api/run_network_flow/";
-      } else {
-        endpoint = "/api/run_other/";
+      } else if(algoKey=="IA"){
+        endpoint = "/api/iterative_assignment/";
       }
 
       const res = await api.post(endpoint);
@@ -150,12 +150,12 @@ export default function AdminAssign() {
 
           <button
             disabled={loading}
-            onClick={() => runAlgorithm("OTHER")}
+            onClick={() => runAlgorithm("IA")}
             className={`px-4 py-2 rounded-xl text-white ${
               loading ? "bg-gray-400" : "bg-gray-900"
             }`}
           >
-            4th Algorithm
+            Iterative Assignment
           </button>
         </div>
       </div>
