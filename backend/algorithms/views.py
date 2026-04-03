@@ -7,64 +7,90 @@ from django.http import JsonResponse
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
 from .services.ILP_with_iterative_rounding import main as run_ilpr
-from .services.Iterative_max_flow_fair import main as run_iterative_assignment
+from .services.Iterative_max_flow_fair import main as run_iterative_assignment_algo
 
 
 # ---------------------------------------------------------------------------
-# ILP matcher  (direct ILP)
+# ILP matcher (direct ILP)
 # ---------------------------------------------------------------------------
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
-    """
-    Run the direct ILP reviewer assignment and return the result.
-    """
     try:
         result = run_ilp()
         return Response(result)
     except Exception as e:
-        return Response({"status": "error", "message": str(e)}, status=500)
-    
-    
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
+
+
+# ---------------------------------------------------------------------------
+# Iterative Max-Min Flow Assignment
+# ---------------------------------------------------------------------------
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_iterative_assignment(request):
     try:
-        result=run_iterative_assignment()
-        return Response(result)
-    except Exception as e:
-        return Response({"status":"error","message":str(e)}, status=500)
+        assignments, weights, score = run_iterative_assignment_algo()
 
+        return Response({
+            "status": "success",
+            "score": score,
+            "assignments": assignments,
+            "total_weights": weights
+        })
+
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
+
+
+# ---------------------------------------------------------------------------
+# Simple ILP (no auth)
+# ---------------------------------------------------------------------------
 
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
 def run_matching(request):
     return Response(run_ilp())
 
 
+# ---------------------------------------------------------------------------
+# Similarity / edge-weight computation
+# ---------------------------------------------------------------------------
+
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def run_similarity_api(request):
-    return Response(run_similarity())
+    try:
+        result = run_similarity()
+        return Response(result)
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
+
+
+# ---------------------------------------------------------------------------
+# Iterative LP Rounding
+# ---------------------------------------------------------------------------
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_iterative_rounding(request):
-    """
-    Run the iterative LP-rounding reviewer assignment and return the result.
 
-    Accepts optional JSON body parameters:
-        k          (int)   — reviewers per paper          (default 3)
-        max_load   (int)   — max papers per reviewer      (default 6)
-        epsilon    (float) — min similarity threshold     (default 0)
-        time_limit (float) — fallback ILP time limit (s)  (default None)
-    """
     data       = request.data or {}
-    k          = int(data.get("k",          3))
-    max_load   = int(data.get("max_load",   6))
-    epsilon    = float(data.get("epsilon",  0))
+    k          = int(data.get("k", 3))
+    max_load   = int(data.get("max_load", 6))
+    epsilon    = float(data.get("epsilon", 0))
     time_limit = data.get("time_limit", None)
+
     if time_limit is not None:
         time_limit = float(time_limit)
 
@@ -76,38 +102,23 @@ def run_matching_with_iterative_rounding(request):
             time_limit=time_limit,
         )
         return Response(result)
+
     except Exception as e:
-        return Response({"status": "error", "message": str(e)}, status=500)
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
 
 
 # ---------------------------------------------------------------------------
-# Similarity / edge-weight computation
+# Utility: check whether edge-weight table exists and has data
 # ---------------------------------------------------------------------------
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def run_similarity_api(request):
-    """
-    Compute and store paper-reviewer similarity scores.
-    """
-    try:
-        result = run_similarity()
-        return Response(result)
-    except Exception as e:
-        return Response({"status": "error", "message": str(e)}, status=500)
-
-
-# ---------------------------------------------------------------------------
-# Utility: check whether the edge-weight table exists and has data
-# ---------------------------------------------------------------------------
-
+@api_view(['GET'])
 def check_edge_weight_table(request):
-    """
-    Returns {"doesExist": true/false} depending on whether the
-    paper_to_reviewer table exists and contains at least one row.
-    """
     try:
         tables = connection.introspection.table_names()
+
         if 'paper_to_reviewer' not in tables:
             return JsonResponse({"doesExist": False})
 
@@ -120,4 +131,7 @@ def check_edge_weight_table(request):
         return JsonResponse({"doesExist": bool(has_data)})
 
     except Exception as e:
-        return JsonResponse({"doesExist": False, "error": str(e)}, status=500)
+        return JsonResponse(
+            {"doesExist": False, "error": str(e)},
+            status=500
+        )
