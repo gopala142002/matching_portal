@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from reviewers.models import Reviewer
-from papers.models import PaperReview
+from .models import FinalAssignment
+
 
 class ReviewerSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
@@ -16,22 +17,28 @@ class ReviewerSerializer(serializers.ModelSerializer):
             "keywords",
         ]
 
+
 class AssignedPaperSerializer(serializers.ModelSerializer):
+    paper_id = serializers.IntegerField(source="paper.id", read_only=True)
     paper_title = serializers.CharField(source="paper.title", read_only=True)
     paper_abstract = serializers.CharField(source="paper.abstract", read_only=True)
-    pdf_url=serializers.CharField(source="paper.pdf_url",read_only=True)
+    pdf_url = serializers.CharField(source="paper.pdf_url", read_only=True)
+
     class Meta:
-        model = PaperReview
+        model = FinalAssignment
         fields = [
             "id",
-            "paper",         
+            "paper_id",
             "paper_title",
             "paper_abstract",
-            "review_status",
-            "pdf_url"
+            "reviewer_status",
+            "pdf_url",
+            "score",
+            "comments"
         ]
-        
+
+
 class SubmitReviewSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PaperReview
+        model = FinalAssignment
         fields = ["score", "comments"]

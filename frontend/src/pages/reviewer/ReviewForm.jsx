@@ -1,37 +1,64 @@
-import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getPaperById, submitReview } from "../../data/mockDb";
+import React, { useEffect, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function ReviewForm() {
   const { paperId } = useParams();
-  const paper = getPaperById(paperId);
-  const myId = "R-2001";
+  const navigate = useNavigate();
 
-  const [score, setScore] = useState("Accept");
-  const [confidence, setConfidence] = useState("Medium");
-  const [commentsToAuthor, setCommentsToAuthor] = useState("");
-  const [commentsToChair, setCommentsToChair] = useState("");
+  const [paper, setPaper] = useState(null);
+  const [score, setScore] = useState("");
+  const [comments, setComments] = useState("");
   const [msg, setMsg] = useState("");
 
+  // 🔥 Fetch paper details
+  useEffect(() => {
+    axios
+      .get(`/api/reviewer/paper/${paperId}/`)
+      .then((res) => setPaper(res.data.data))
+      .catch((err) => {
+        console.error(err);
+        setPaper(null);
+      });
+  }, [paperId]);
+
   if (!paper) {
-    return <div className="rounded-2xl border bg-white p-6">Paper not found.</div>;
+    return (
+      <div className="rounded-2xl border bg-white p-6">
+        Paper not found or not assigned.
+      </div>
+    );
   }
 
-  function onSubmit(e) {
+  // 🔥 Submit review
+  const onSubmit = async (e) => {
     e.preventDefault();
-    submitReview(paper.id, {
-      reviewerId: myId,
-      score,
-      confidence,
-      commentsToAuthor,
-      commentsToChair,
-    });
-    setMsg("Review submitted successfully (mock)!");
-  }
+
+    try {
+      await axios.post(`/api/reviewer/submit-review/${paperId}/`, {
+        score,
+        comments,
+      });
+
+      setMsg("Review submitted successfully!");
+
+      // optional: redirect after 1.5s
+      setTimeout(() => {
+        navigate("/reviewer/assigned");
+      }, 1500);
+
+    } catch (err) {
+      console.error(err);
+      setMsg("Error submitting review.");
+    }
+  };
 
   return (
     <div className="rounded-3xl border bg-white p-6 shadow-sm">
-      <div className="text-sm text-gray-500">Paper ID: {paper.id}</div>
+      <div className="text-sm text-gray-500">
+        Paper ID: {paper.paper_id}
+      </div>
+
       <h2 className="text-xl font-semibold">Submit Review</h2>
 
       {msg && (
@@ -41,59 +68,49 @@ export default function ReviewForm() {
       )}
 
       <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+
+        {/* Score */}
         <div>
           <label className="text-sm font-medium text-gray-700">Score</label>
           <select
             className="mt-1 w-full rounded-xl border px-3 py-2"
             value={score}
             onChange={(e) => setScore(e.target.value)}
+            required
           >
-            <option>Accept</option>
-            <option>Weak Accept</option>
-            <option>Borderline</option>
-            <option>Weak Reject</option>
-            <option>Reject</option>
+            <option value="">Select</option>
+            <option value="Accept">Accept</option>
+            <option value="Weak Accept">Weak Accept</option>
+            <option value="Borderline">Borderline</option>
+            <option value="Weak Reject">Weak Reject</option>
+            <option value="Reject">Reject</option>
           </select>
         </div>
 
+        {/* Comments */}
         <div>
-          <label className="text-sm font-medium text-gray-700">Confidence</label>
-          <select
-            className="mt-1 w-full rounded-xl border px-3 py-2"
-            value={confidence}
-            onChange={(e) => setConfidence(e.target.value)}
-          >
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700">Comments to Author</label>
+          <label className="text-sm font-medium text-gray-700">
+            Comments
+          </label>
           <textarea
             className="mt-1 w-full rounded-xl border px-3 py-2"
             rows={4}
-            value={commentsToAuthor}
-            onChange={(e) => setCommentsToAuthor(e.target.value)}
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            required
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-700">Comments to Chair</label>
-          <textarea
-            className="mt-1 w-full rounded-xl border px-3 py-2"
-            rows={3}
-            value={commentsToChair}
-            onChange={(e) => setCommentsToChair(e.target.value)}
-          />
-        </div>
-
+        {/* Buttons */}
         <div className="flex flex-wrap gap-3">
           <button className="rounded-xl bg-gray-900 px-5 py-2 text-white text-sm font-medium">
             Submit Review
           </button>
-          <Link className="rounded-xl border px-4 py-2 text-sm" to={`/reviewer/paper/${paper.id}`}>
+
+          <Link
+            className="rounded-xl border px-4 py-2 text-sm"
+            to={`/reviewer/paper/${paper.paper_id}`}
+          >
             Back
           </Link>
         </div>

@@ -1,5 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.db import models
+from django.contrib.auth.models import User
+
 
 class Paper(models.Model):
     title = models.CharField(max_length=500)
@@ -33,35 +36,18 @@ class PaperMetadata(models.Model):
     def __str__(self):
         return f"Metadata for Paper {self.paper.id}"
 
-class PaperReview(models.Model):
-    paper = models.ForeignKey(
-        "papers.Paper",   
-        on_delete=models.CASCADE,
-        related_name="reviews"
-    )
-    reviewer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="assigned_reviews"
-    )
-    review_status = models.CharField(
-        max_length=20,
-        choices=[
-            ("pending", "Pending"),
-            ("submitted", "Submitted")
-        ],
-        default="pending"
-    )
-    score = models.IntegerField(
-        null=True,
-        blank=True
-    )
-    comments = models.TextField(
-        blank=True
-    )
-    class Meta:
-        db_table = "paper_reviews"
-        unique_together = ("paper", "reviewer")
 
-    def __str__(self):
-        return f"Review: Paper {self.paper.id} by Reviewer {self.reviewer.id}"
+class FinalAssignment(models.Model):
+    paper = models.ForeignKey("papers.Paper", on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_column="researcher_id"
+    )
+
+    reviewer_status = models.CharField(max_length=50, default="Pending")
+    score = models.BigIntegerField(null=True, blank=True)
+    comments = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = "final_assignment"
