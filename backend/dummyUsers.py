@@ -55,7 +55,7 @@ positions = [
 
 
 TOTAL_RESEARCHERS = 2000
-REVIEWER_COUNT = 500
+REVIEWER_COUNT = 1000
 COMMON_PASSWORD = "StrongPass123!"
 
 # randomly choose 500 reviewers

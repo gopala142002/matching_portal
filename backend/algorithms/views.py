@@ -2,43 +2,104 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import connection
+from django.http import JsonResponse
+
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
-from .services.ILP_with_iterative_rounding import main_iterative as run_ilpr
-from django.http import JsonResponse
+from .services.ILP_with_iterative_rounding import main as run_ilpr
+
+
+# ---------------------------------------------------------------------------
+# ILP matcher  (direct ILP)
+# ---------------------------------------------------------------------------
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
-    return Response(run_ilp())
+    """
+    Run the direct ILP reviewer assignment and return the result.
+    """
+    try:
+        result = run_ilp()
+        return Response(result)
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-@api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-def run_matching(request):
-    return Response(run_ilp())
-
-
-@api_view(['POST'])
-def run_similarity_api(request):
-    return Response(run_similarity())
+# ---------------------------------------------------------------------------
+# Iterative rounding matcher  (LP rounding + ILP fallback)
+# ---------------------------------------------------------------------------
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_iterative_rounding(request):
-    return Response(run_ilpr)
+    """
+    Run the iterative LP-rounding reviewer assignment and return the result.
 
+    Accepts optional JSON body parameters:
+        k          (int)   — reviewers per paper          (default 3)
+        max_load   (int)   — max papers per reviewer      (default 6)
+        epsilon    (float) — min similarity threshold     (default 0)
+        time_limit (float) — fallback ILP time limit (s)  (default None)
+    """
+    data       = request.data or {}
+    k          = int(data.get("k",          3))
+    max_load   = int(data.get("max_load",   6))
+    epsilon    = float(data.get("epsilon",  0))
+    time_limit = data.get("time_limit", None)
+    if time_limit is not None:
+        time_limit = float(time_limit)
+
+    try:
+        result = run_ilpr(
+            k=k,
+            max_load=max_load,
+            epsilon=epsilon,
+            time_limit=time_limit,
+        )
+        return Response(result)
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Similarity / edge-weight computation
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_similarity_api(request):
+    """
+    Compute and store paper-reviewer similarity scores.
+    """
+    try:
+        result = run_similarity()
+        return Response(result)
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Utility: check whether the edge-weight table exists and has data
+# ---------------------------------------------------------------------------
 
 def check_edge_weight_table(request):
-    with connection.cursor() as cursor:
+    """
+    Returns {"doesExist": true/false} depending on whether the
+    paper_to_reviewer table exists and contains at least one row.
+    """
+    try:
         tables = connection.introspection.table_names()
         if 'paper_to_reviewer' not in tables:
-            return JsonResponse({
-                "doesExist": False,
-            })
-        cursor.execute('''SELECT EXISTS (SELECT 1 FROM paper_to_reviewer LIMIT 1);''')
-        has_data = cursor.fetchone()[0]
+            return JsonResponse({"doesExist": False})
 
-    return JsonResponse({
-        "doesExist": has_data
-    })
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'SELECT EXISTS (SELECT 1 FROM paper_to_reviewer LIMIT 1);'
+            )
+            has_data = cursor.fetchone()[0]
+
+        return JsonResponse({"doesExist": bool(has_data)})
+
+    except Exception as e:
+        return JsonResponse({"doesExist": False, "error": str(e)}, status=500)

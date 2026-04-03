@@ -1,15 +1,19 @@
+import os
+import sys
+import django
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "matching_portal.settings")
+django.setup()
+
 import json
 import numpy as np
 from django.db import connection
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-
-# 🔥 Load model once
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-
-# 🔹 Create table + insert pairs
 def prepare_paper_reviewer_table():
     with connection.cursor() as cursor:
 
@@ -26,7 +30,6 @@ def prepare_paper_reviewer_table():
             );
         """)
 
-        # 🔥 TRUNCATE for fresh computation
         cursor.execute("""
             TRUNCATE TABLE paper_to_reviewer RESTART IDENTITY;
         """)
@@ -47,17 +50,15 @@ def prepare_paper_reviewer_table():
             );
         """)
 
-    print("✅ paper_to_reviewer refreshed")
+    print(" paper_to_reviewer refreshed")
 
 
-# 🔹 Clean text
 def clean_text(text):
     if not text:
         return ""
     return str(text).lower().replace(",", " ").replace(";", " ")
 
 
-# 🔹 Parse JSON safely
 def parse_field(field):
     if not field:
         return ""
@@ -70,7 +71,6 @@ def parse_field(field):
     return str(field)
 
 
-# 🔹 FAST similarity computation (batch + vectorized)
 def compute_similarity_scores(batch_size=2000):
 
     with connection.cursor() as cursor:
@@ -85,14 +85,13 @@ def compute_similarity_scores(batch_size=2000):
         rows = cursor.fetchall()
 
     if not rows:
-        print("❌ No data found")
+        print(" No data found")
         return {"status": "error", "message": "No data"}
 
-    print(f"🚀 Processing {len(rows)} pairs...")
+    print(f" Processing {len(rows)} pairs...")
 
     similarities = []
 
-    # 🔥 Batch processing (prevents memory crash)
     for start in tqdm(range(0, len(rows), batch_size), desc="Processing batches"):
 
         batch = rows[start:start + batch_size]
@@ -116,25 +115,19 @@ def compute_similarity_scores(batch_size=2000):
             paper_texts.append(paper_text)
             reviewer_texts.append(reviewer_text)
 
-        # 🔥 Encode (batch)
         paper_emb = model.encode(paper_texts, batch_size=64, convert_to_numpy=True)
         reviewer_emb = model.encode(reviewer_texts, batch_size=64, convert_to_numpy=True)
 
-        # 🔥 Normalize
         paper_emb /= np.linalg.norm(paper_emb, axis=1, keepdims=True)
         reviewer_emb /= np.linalg.norm(reviewer_emb, axis=1, keepdims=True)
-
-        # 🔥 FAST cosine (row-wise)
         sims = np.sum(paper_emb * reviewer_emb, axis=1)
 
-        # Store results
         for i in range(len(ids)):
             sim = float(max(0.0, min(1.0, sims[i])))
             similarities.append((sim, ids[i]))
 
-    print("💾 Bulk updating database...")
+    print(" Bulk updating database...")
 
-    # 🔥 Bulk update (FAST)
     with connection.cursor() as cursor:
         cursor.executemany("""
             UPDATE paper_to_reviewer
@@ -142,15 +135,13 @@ def compute_similarity_scores(batch_size=2000):
             WHERE id = %s
         """, similarities)
 
-    print(f"✅ Updated {len(similarities)} similarity scores")
+    print(f" Updated {len(similarities)} similarity scores")
 
     return {
         "status": "success",
         "updated": len(similarities)
     }
 
-
-# 🔥 MAIN FUNCTION
 def main():
 
     steps = [
@@ -160,20 +151,18 @@ def main():
 
     overall = tqdm(total=len(steps), desc="Overall Progress")
 
-    print("\n🔧 Step 1: Preparing table...")
+    print("\n Step 1: Preparing table...")
     prepare_paper_reviewer_table()
     overall.update(1)
 
-    print("\n🧠 Step 2: Computing similarity...")
+    print("\n Step 2: Computing similarity...")
     result = compute_similarity_scores()
     overall.update(1)
 
     overall.close()
 
-    print("\n🎉 Completed!")
+    print("\n Completed!")
     return result
 
-
-# 🔥 Standalone run
 if __name__ == "__main__":
     main()
