@@ -16,7 +16,7 @@ from papers.models import Paper, PaperMetadata
 from research_domain import cs_domains
 
 
-NUM_PAPERS = 500
+NUM_PAPERS = 300
 
 
 titles = [

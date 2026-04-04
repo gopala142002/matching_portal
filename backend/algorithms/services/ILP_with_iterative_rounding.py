@@ -338,21 +338,11 @@ def save_allocation(x):
 
     with transaction.atomic():
         with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS final_assignment (
-                    paper_id        BIGINT,
-                    researcher_id   BIGINT,
-                    reviewer_status VARCHAR(50) DEFAULT 'Pending',
-                    score           BIGINT,
-                    comments        TEXT
-                )
-            """)
             cursor.execute("DELETE FROM final_assignment")
             cursor.executemany("""
-                INSERT INTO final_assignment (paper_id, researcher_id)
-                VALUES (%s, %s)
+                INSERT INTO final_assignment (paper_id, researcher_id, reviewer_status )
+                VALUES (%s, %s,'pending')
             """, assignments)
-
             cursor.execute("""
                 UPDATE papers
                 SET status = 'Under review'

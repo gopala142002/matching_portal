@@ -232,22 +232,18 @@ def save_iterative_allocation(assignments):
     with transaction.atomic():
         with connection.cursor() as cursor:
 
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS final_assignment (
-                    paper_id        BIGINT,
-                    researcher_id   BIGINT,
-                    reviewer_status VARCHAR(50) DEFAULT 'Pending',
-                    score           BIGINT,
-                    comments        TEXT
-                )
-            """)
 
             cursor.execute("DELETE FROM final_assignment")
 
             cursor.executemany("""
-                INSERT INTO final_assignment (paper_id, researcher_id)
-                VALUES (%s, %s)
+                INSERT INTO final_assignment (paper_id, researcher_id,reviewer_status)
+                VALUES (%s, %s,'pending')
             """, rows)
+
+            cursor.execute("""
+                UPDATE final_assignment
+                SET reviewer_status = 'pending'
+            """)
 
             cursor.execute("""
                 UPDATE papers

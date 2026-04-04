@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     "accounts",
     "papers",
     "reviewers",
-    "paperAssign",
     "algorithms",
     "data",
 ]
