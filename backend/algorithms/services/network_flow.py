@@ -28,7 +28,7 @@ def load_paper_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    # ✅ Use INT directly (IMPORTANT FIX)
+    # ✅ Use INT directly (IMPORTANT FIX) comment
     return [(int(row[0]), int(row[1]), float(row[2])) for row in rows]
 
 
