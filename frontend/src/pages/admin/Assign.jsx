@@ -41,7 +41,7 @@ export default function AdminAssign() {
 
       alert(
         err.response?.data?.message ||
-          "Failed to generate edge weights. Check backend."
+        "Failed to generate edge weights. Check backend."
       );
     } finally {
       setLoading(false);
@@ -59,12 +59,12 @@ export default function AdminAssign() {
       if (algoKey === "ILP") {
         endpoint = "/api/run_ilp/";
       }
-      else if(algoKey === "ILPR"){
-        endpoint="/api/run_ilpr/"
+      else if (algoKey === "ILPR") {
+        endpoint = "/api/run_ilpr/"
       }
       else if (algoKey === "NF") {
         endpoint = "/api/run_network_flow/";
-      } else if(algoKey=="IA"){
+      } else if (algoKey == "IA") {
         endpoint = "/api/iterative_assignment/";
       }
 
@@ -76,7 +76,7 @@ export default function AdminAssign() {
 
       alert(
         err.response?.data?.message ||
-          "Algorithm failed. Check backend."
+        "Algorithm failed. Check backend."
       );
     } finally {
       setLoading(false);
@@ -95,9 +95,8 @@ export default function AdminAssign() {
           <button
             onClick={generateCrossJoin}
             disabled={loading}
-            className={`rounded-xl px-4 py-2 text-white ${
-              loading ? "bg-blue-300" : "bg-blue-600"
-            }`}
+            className={`rounded-xl px-4 py-2 text-white ${loading ? "bg-blue-300" : "bg-blue-600"
+              }`}
           >
             Assign Paper-Reviewer edge weights
           </button>
@@ -111,22 +110,20 @@ export default function AdminAssign() {
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              crossJoinReady && !loading
-                ? "bg-gray-900"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white ${crossJoinReady && !loading
+              ? "bg-gray-900"
+              : "bg-gray-400 cursor-not-allowed"
+              }`}
           >
             Run ILP
           </button>
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILPR")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              crossJoinReady && !loading
-                ? "bg-gray-900"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white ${crossJoinReady && !loading
+              ? "bg-gray-900"
+              : "bg-gray-400 cursor-not-allowed"
+              }`}
           >
             Run ILP (Iterative)
           </button>
@@ -141,9 +138,8 @@ export default function AdminAssign() {
           <button
             disabled={loading}
             onClick={() => runAlgorithm("NF")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              loading ? "bg-gray-400" : "bg-gray-900"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white ${loading ? "bg-gray-400" : "bg-gray-900"
+              }`}
           >
             Network Flow
           </button>
@@ -151,9 +147,8 @@ export default function AdminAssign() {
           <button
             disabled={loading}
             onClick={() => runAlgorithm("IA")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              loading ? "bg-gray-400" : "bg-gray-900"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white ${loading ? "bg-gray-400" : "bg-gray-900"
+              }`}
           >
             Iterative Assignment
           </button>

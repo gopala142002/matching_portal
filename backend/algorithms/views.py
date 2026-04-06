@@ -8,8 +8,24 @@ from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
 from .services.ILP_with_iterative_rounding import main as run_ilpr
 from .services.Iterative_max_flow_fair import main as run_iterative_assignment_algo
+from .services.network_flow import main as run_network_flow
 
 
+
+# ---------------------------------------------------------------------------
+# Network Flow
+# ---------------------------------------------------------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_network_flow_algo(request):
+    try:
+        result = run_network_flow()
+        return Response(result)
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
 # ---------------------------------------------------------------------------
 # ILP matcher (direct ILP)
 # ---------------------------------------------------------------------------
