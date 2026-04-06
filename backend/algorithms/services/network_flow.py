@@ -1,5 +1,19 @@
+# -------------------------------------------------------------------
+# DJANGO SETUP (IMPORTANT)
+# -------------------------------------------------------------------
+import os
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'matching_portal.settings')
+django.setup()
+
+
+# -------------------------------------------------------------------
+# IMPORTS
+# -------------------------------------------------------------------
 from collections import deque, defaultdict
-from django.db import connection
+from django.db import connection, transaction
+
 
 # -------------------------------------------------------------------
 # LOAD DATA FROM DATABASE
@@ -14,7 +28,8 @@ def load_paper_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
+    # ✅ Use INT directly (IMPORTANT FIX)
+    return [(int(row[0]), int(row[1]), float(row[2])) for row in rows]
 
 
 # -------------------------------------------------------------------
@@ -25,14 +40,12 @@ def build_data_structures(pr_edges):
     papers = sorted({p for p, _, _ in pr_edges})
     reviewers = sorted({r for _, r, _ in pr_edges})
 
-    sim = {}
     paper_to_reviewers = defaultdict(list)
 
     for p, r, w in pr_edges:
-        sim[(p, r)] = w
         paper_to_reviewers[p].append((r, w))
 
-    return papers, reviewers, sim, paper_to_reviewers
+    return papers, reviewers, paper_to_reviewers
 
 
 # -------------------------------------------------------------------
@@ -112,7 +125,7 @@ def solve_with_threshold(papers, reviewers, paper_to_reviewers, k, c, threshold)
 
         for r, w in paper_to_reviewers[p]:
             if w >= threshold:
-                mf.add_edge(p, r, 1)  # prevents duplicate reviewer
+                mf.add_edge(p, r, 1)
 
     # Reviewer → Sink
     for r in reviewers:
@@ -161,6 +174,39 @@ def solve(papers, reviewers, paper_to_reviewers, k, c):
 
 
 # -------------------------------------------------------------------
+# SAVE TO DATABASE
+# -------------------------------------------------------------------
+
+def save_iterative_allocation(assignments):
+    rows = []
+
+    for paper, reviewers in assignments.items():
+        for reviewer in reviewers:
+            rows.append((paper, reviewer))
+
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+
+            # Clear old assignments
+            cursor.execute("DELETE FROM final_assignment")
+
+            # Insert new assignments
+            cursor.executemany("""
+                INSERT INTO final_assignment (paper_id, researcher_id, reviewer_status)
+                VALUES (%s, %s, 'pending')
+            """, rows)
+
+            # Update paper status
+            cursor.execute("""
+                UPDATE papers
+                SET status = 'Under review'
+            """)
+
+    print(f"✅ Saved {len(rows)} assignments.")
+    return rows
+
+
+# -------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------
 
@@ -168,7 +214,7 @@ if __name__ == "__main__":
     print("📥 Loading data from database...")
 
     pr_edges = load_paper_reviewer_edges()
-    papers, reviewers, sim, paper_to_reviewers = build_data_structures(pr_edges)
+    papers, reviewers, paper_to_reviewers = build_data_structures(pr_edges)
 
     print(f"✅ Papers: {len(papers)}")
     print(f"✅ Reviewers: {len(reviewers)}")
@@ -184,6 +230,9 @@ if __name__ == "__main__":
 
     print("\n✅ Max-Min Fair Score:", round(score, 4))
 
-    print("\n📊 Assignments (first 10 papers):")
+    print("\n📊 Sample Assignments (first 10 papers):")
     for p in papers[:10]:
         print(f"{p} → {assignment[p]}")
+
+    # SAVE RESULTS
+    save_iterative_allocation(assignment)
