@@ -210,7 +210,7 @@ def save_iterative_allocation(assignments):
 # MAIN
 # -------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main():
     print("📥 Loading data from database...")
 
     pr_edges = load_paper_reviewer_edges()
@@ -236,3 +236,6 @@ if __name__ == "__main__":
 
     # SAVE RESULTS
     save_iterative_allocation(assignment)
+
+if __name__ == "__main__":
+    main()
