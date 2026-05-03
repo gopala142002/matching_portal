@@ -12,14 +12,7 @@ class Researcher(models.Model):
     
     name = models.CharField(max_length=255)
     institutions = models.JSONField(default=list)
-    department = models.CharField(max_length=255)
-    academic_position = models.CharField(max_length=100)
-
     research_interests = models.JSONField(default=list)
-    keywords = models.JSONField(default=list)
-
-    h_index = models.IntegerField(null=True, blank=True)
-
     is_reviewer = models.BooleanField(default=False)
 
     class Meta:

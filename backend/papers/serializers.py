@@ -1,17 +1,12 @@
 from rest_framework import serializers
-from papers.models import Paper, PaperMetadata
+from papers.models import Paper
 
 
-# 📄 Metadata Serializer
-class PaperMetadataSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaperMetadata
-        fields = ["author_names", "paper_affiliations"]
+
 
 
 # 📄 Read Serializer
 class PaperSerializer(serializers.ModelSerializer):
-    metadata = PaperMetadataSerializer(read_only=True)
 
     class Meta:
         model = Paper
@@ -82,10 +77,5 @@ class PaperCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        PaperMetadata.objects.create(
-            paper=paper,
-            author_names=list(set(author_names)),
-            paper_affiliations=list(affiliations)
-        )
 
         return paper

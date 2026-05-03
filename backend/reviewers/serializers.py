@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from reviewers.models import Reviewer
 from .models import FinalAssignment
 
 
@@ -7,7 +6,6 @@ class ReviewerSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
-        model = Reviewer
         fields = [
             "id",
             "reviewer_name",
