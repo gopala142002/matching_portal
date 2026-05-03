@@ -216,10 +216,6 @@ def main():
     pr_edges = load_paper_reviewer_edges()
     papers, reviewers, paper_to_reviewers = build_data_structures(pr_edges)
 
-    print(f"✅ Papers: {len(papers)}")
-    print(f"✅ Reviewers: {len(reviewers)}")
-    print(f"✅ Edges: {len(pr_edges)}")
-
     # PARAMETERS
     k = 3   # reviewers per paper
     c = 6   # max papers per reviewer

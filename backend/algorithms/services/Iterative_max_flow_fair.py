@@ -20,7 +20,7 @@ def load_paper_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    # ✅ SAFE unpacking (fixes your error)
+
     return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
 
 
@@ -33,7 +33,7 @@ def load_reviewer_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    # ✅ SAFE unpacking
+
     return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
 
 
@@ -196,7 +196,7 @@ class MaxMinReviewerAssignment:
         best_assignments = None
         best_total_weights = None
 
-        print("\n🚀 Running Max-Min Optimization...")
+        print("Running Max-Min Optimization...")
 
         for _ in tqdm(range(self.steps), desc="Binary Search Progress"):
             mid = (lo + hi) / 2
@@ -259,13 +259,13 @@ def save_iterative_allocation(assignments):
 # ---------------------------------------------------------------------------
 
 def main():
-    print("📥 Loading data from database...")
+    print("Loading data from database...")
 
     pr_edges = load_paper_reviewer_edges()
     rr_edges = load_reviewer_reviewer_edges()
 
-    print(f"✅ Loaded {len(pr_edges)} paper-reviewer edges")
-    print(f"✅ Loaded {len(rr_edges)} reviewer-reviewer edges")
+    print(f" Loaded {len(pr_edges)} paper-reviewer edges")
+    print(f" Loaded {len(rr_edges)} reviewer-reviewer edges")
 
     solver = MaxMinReviewerAssignment(
         pr_edges,
