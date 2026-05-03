@@ -125,7 +125,7 @@ export default function AdminAssign() {
               : "bg-gray-400 cursor-not-allowed"
               }`}
           >
-            Run ILP (Iterative)
+            Run LP with iterative rounding
           </button>
         </div>
       </div>
