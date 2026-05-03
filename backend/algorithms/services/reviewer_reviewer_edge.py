@@ -14,6 +14,10 @@ from tqdm import tqdm
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
+
+# -------------------------------
+# TABLE PREPARATION
+# -------------------------------
 def prepare_reviewer_graph():
     with connection.cursor() as cursor:
 
@@ -46,8 +50,12 @@ def prepare_reviewer_graph():
               AND r2.is_reviewer = TRUE;
         """)
 
-    print(" reviewer_to_reviewer table ready")
+    print("reviewer_to_reviewer table ready")
 
+
+# -------------------------------
+# HELPERS
+# -------------------------------
 def parse_list_field(field):
     if not field:
         return []
@@ -81,13 +89,16 @@ def compute_embedding_similarity(texts1, texts2):
     return np.sum(emb1 * emb2, axis=1)
 
 
+# -------------------------------
+# MAIN SIMILARITY FUNCTION
+# -------------------------------
 def compute_reviewer_similarity(batch_size=2000):
 
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT rtr.id,
-                   r1.keywords, r1.research_interests, r1.institutions,
-                   r2.keywords, r2.research_interests, r2.institutions
+                   r1.research_interests, r1.institutions,
+                   r2.research_interests, r2.institutions
             FROM reviewer_to_reviewer rtr
             JOIN researchers r1 ON rtr.reviewer_id_left = r1.id
             JOIN researchers r2 ON rtr.reviewer_id_right = r2.id
@@ -95,10 +106,10 @@ def compute_reviewer_similarity(batch_size=2000):
         rows = cursor.fetchall()
 
     if not rows:
-        print(" No reviewer pairs found")
+        print("No reviewer pairs found")
         return {"status": "error"}
 
-    print(f" Processing {len(rows)} reviewer pairs...")
+    print(f"Processing {len(rows)} reviewer pairs...")
 
     similarities = []
 
@@ -108,49 +119,44 @@ def compute_reviewer_similarity(batch_size=2000):
 
         ids = []
 
-        kw_left, kw_right = [], []
         int_left, int_right = [], []
         inst_sims = []
 
         for row in batch:
-            rtr_id, l_kw, l_int, l_inst, r_kw, r_int, r_inst = row
+            rtr_id, l_int, l_inst, r_int, r_inst = row
 
-            l_kw_list = parse_list_field(l_kw)
             l_int_list = parse_list_field(l_int)
-            l_inst_list = parse_list_field(l_inst)
-
-            r_kw_list = parse_list_field(r_kw)
             r_int_list = parse_list_field(r_int)
+
+            l_inst_list = parse_list_field(l_inst)
             r_inst_list = parse_list_field(r_inst)
 
             ids.append(rtr_id)
 
-            kw_left.append(clean_join(l_kw_list))
-            kw_right.append(clean_join(r_kw_list))
-
+            # text for embedding
             int_left.append(clean_join(l_int_list))
             int_right.append(clean_join(r_int_list))
 
+            # institution similarity
             inst_sims.append(jaccard_similarity(l_inst_list, r_inst_list))
 
-        kw_sims = compute_embedding_similarity(kw_left, kw_right)
+        # embedding similarity (research interests)
         int_sims = compute_embedding_similarity(int_left, int_right)
         inst_sims = np.array(inst_sims)
 
+        # combine scores
         for i in range(len(ids)):
-            sim = (
-                0.5 * kw_sims[i] +
-                0.3 * int_sims[i] +
-                0.2 * inst_sims[i]
-            )
 
-            if inst_sims[i] > 0:
-                sim *= 0.8
+            interest_sim = float(max(0.0, min(1.0, int_sims[i])))
+            inst_sim = inst_sims[i]
 
-            sim = float(max(0.0, min(1.0, sim)))
-            similarities.append((sim, ids[i]))
+            # final score:
+            # high if interests match, penalize if same institution
+            final_score = interest_sim * (1 - inst_sim)
 
-    print(" Updating edge weights...")
+            similarities.append((final_score, ids[i]))
+
+    print("Updating edge weights...")
 
     with connection.cursor() as cursor:
         cursor.executemany("""
@@ -159,7 +165,7 @@ def compute_reviewer_similarity(batch_size=2000):
             WHERE id = %s
         """, similarities)
 
-    print(f" Updated {len(similarities)} edges")
+    print(f"Updated {len(similarities)} edges")
 
     return {
         "status": "success",
@@ -167,7 +173,9 @@ def compute_reviewer_similarity(batch_size=2000):
     }
 
 
-
+# -------------------------------
+# MAIN DRIVER
+# -------------------------------
 def main():
 
     steps = [
@@ -177,17 +185,17 @@ def main():
 
     overall = tqdm(total=len(steps), desc="Overall Progress")
 
-    print("\n Step 1: Preparing reviewer graph...")
+    print("\nStep 1: Preparing reviewer graph...")
     prepare_reviewer_graph()
     overall.update(1)
 
-    print("\n Step 2: Computing similarity...")
+    print("\nStep 2: Computing similarity...")
     result = compute_reviewer_similarity()
     overall.update(1)
 
     overall.close()
 
-    print("\n Completed!")
+    print("\nCompleted!")
     return result
 
 

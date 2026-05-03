@@ -1,15 +1,14 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.db import connection
 from django.http import JsonResponse
 
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
-from .services.ILP_with_iterative_rounding import main as run_ilpr
+from .services.lp_with_iterative_rounding import main as run_lp_with_iterative_rounding
 from .services.Iterative_max_flow_fair import main as run_iterative_assignment_algo
 from .services.network_flow import main as run_network_flow
-
 
 
 # ---------------------------------------------------------------------------
@@ -26,10 +25,11 @@ def run_network_flow_algo(request):
             {"status": "error", "message": str(e)},
             status=500
         )
-# ---------------------------------------------------------------------------
-# ILP matcher (direct ILP)
-# ---------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------
+# ILP matcher
+# ---------------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
@@ -46,20 +46,12 @@ def run_matching_with_ILP(request):
 # ---------------------------------------------------------------------------
 # Iterative Max-Min Flow Assignment
 # ---------------------------------------------------------------------------
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_iterative_assignment(request):
     try:
-        assignments, weights, score = run_iterative_assignment_algo()
-
-        return Response({
-            "status": "success",
-            "score": score,
-            "assignments": assignments,
-            "total_weights": weights
-        })
-
+        result = run_iterative_assignment_algo()
+        return Response(result)
     except Exception as e:
         return Response(
             {"status": "error", "message": str(e)},
@@ -68,18 +60,23 @@ def run_iterative_assignment(request):
 
 
 # ---------------------------------------------------------------------------
-# Simple ILP (no auth)
+# Simple ILP (same as ILP but direct call)
 # ---------------------------------------------------------------------------
-
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def run_matching(request):
-    return Response(run_ilp())
+    try:
+        return Response(run_ilp())
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=500
+        )
 
 
 # ---------------------------------------------------------------------------
 # Similarity / edge-weight computation
 # ---------------------------------------------------------------------------
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_similarity_api(request):
@@ -96,29 +93,12 @@ def run_similarity_api(request):
 # ---------------------------------------------------------------------------
 # Iterative LP Rounding
 # ---------------------------------------------------------------------------
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_iterative_rounding(request):
-
-    data       = request.data or {}
-    k          = int(data.get("k", 3))
-    max_load   = int(data.get("max_load", 6))
-    epsilon    = float(data.get("epsilon", 0))
-    time_limit = data.get("time_limit", None)
-
-    if time_limit is not None:
-        time_limit = float(time_limit)
-
     try:
-        result = run_ilpr(
-            k=k,
-            max_load=max_load,
-            epsilon=epsilon,
-            time_limit=time_limit,
-        )
+        result = run_lp_with_iterative_rounding()
         return Response(result)
-
     except Exception as e:
         return Response(
             {"status": "error", "message": str(e)},
@@ -129,8 +109,8 @@ def run_matching_with_iterative_rounding(request):
 # ---------------------------------------------------------------------------
 # Utility: check whether edge-weight table exists and has data
 # ---------------------------------------------------------------------------
-
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def check_edge_weight_table(request):
     try:
         tables = connection.introspection.table_names()

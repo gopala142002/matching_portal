@@ -1,32 +1,22 @@
-import gurobipy as gp
-from gurobipy import GRB
+import os
+import sys
+import django
+
+# -------------------------------
+# DJANGO SETUP
+# -------------------------------
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "matching_portal.settings")
+django.setup()
+
 from django.db import connection, transaction
-from tqdm import tqdm
+from gurobipy import Model, GRB, quicksum
 
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-K = 3          # reviewers required per paper
-MAX_LOAD = 6   # maximum papers a single reviewer can handle
-EPSILON = 0  # minimum similarity score to consider an edge
-
-
-# ---------------------------------------------------------------------------
-# Data Loading
-# ---------------------------------------------------------------------------
-
+# -------------------------------
+# LOAD DATA
+# -------------------------------
 def load_data():
-    """
-    Load paper-reviewer similarity scores from the database.
-
-    Returns
-    -------
-    papers   : list of paper IDs
-    reviewers: list of reviewer IDs
-    weight   : dict {(paper_id, reviewer_id): similarity_score}
-    """
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT paper_id, researcher_id, similarity_score
@@ -48,373 +38,154 @@ def load_data():
     return list(papers), list(reviewers), weight
 
 
-# ---------------------------------------------------------------------------
-# Feasibility Check
-# ---------------------------------------------------------------------------
-
-def check_feasibility(papers, reviewers, weight, k=K, max_load=MAX_LOAD):
+# -------------------------------
+# SAVE FUNCTION (YOUR FORMAT)
+# -------------------------------
+def save_allocation(assignments):
     """
-    Pre-solve checks to catch obvious infeasibility early.
-
-    Returns True if the problem *might* be feasible, False otherwise.
+    assignments: set of (paper_id, reviewer_id)
     """
-    feasible = True
-
-    # 1. Global capacity: total reviewer slots must cover total demand
-    total_demand = len(papers) * k
-    total_capacity = len(reviewers) * max_load
-    if total_capacity < total_demand:
-        print(
-            f"  Infeasible: total reviewer capacity ({total_capacity}) "
-            f"< total demand ({total_demand})."
-        )
-        feasible = False
-
-    # 2. Per-paper candidate count: each paper needs at least k candidates
-    from collections import defaultdict
-    paper_candidates = defaultdict(int)
-    for (p, r) in weight:
-        paper_candidates[p] += 1
-
-    short = [p for p in papers if paper_candidates[p] < k]
-    if short:
-        print(
-            f"  {len(short)} paper(s) have fewer than k={k} reviewer "
-            f"candidates after epsilon filtering. "
-            f"Example paper IDs: {short[:5]}"
-        )
-        feasible = False
-
-    return feasible
-
-
-# ---------------------------------------------------------------------------
-# ILP Solver
-# ---------------------------------------------------------------------------
-
-def solve_matching(papers, reviewers, weight, k=K, max_load=MAX_LOAD,
-                   epsilon=EPSILON, time_limit=None):
-    """
-    Solve the reviewer-assignment ILP.
-
-    Objective
-    ---------
-    Maximise total similarity (sum of weight * x over all assignments).
-
-    Constraints
-    -----------
-    - Each paper is assigned exactly k reviewers.
-    - Each reviewer handles at most max_load papers.
-    - Only edges with weight >= epsilon are considered.
-
-    Parameters
-    ----------
-    papers     : list of paper IDs
-    reviewers  : list of reviewer IDs
-    weight     : dict {(paper_id, reviewer_id): float}
-    k          : number of reviewers per paper
-    max_load   : max papers per reviewer
-    epsilon    : minimum similarity threshold
-    time_limit : optional Gurobi time limit in seconds
-
-    Returns
-    -------
-    model, x
-        model : Gurobi Model object (or None on failure)
-        x     : dict of Gurobi binary variables {(paper_id, reviewer_id): Var}
-    """
-    model = gp.Model("reviewer_assignment")
-
-    # Suppress default Gurobi banner; keep solving output
-    model.setParam("OutputFlag", 1)
-
-    if time_limit is not None:
-        model.setParam("TimeLimit", time_limit)
-
-    # ------------------------------------------------------------------
-    # Decision variables
-    # x[i, j] = 1  if paper i is assigned to reviewer j
-    # ------------------------------------------------------------------
-    x = {
-        (i, j): model.addVar(vtype=GRB.BINARY, name=f"x_{i}_{j}")
-        for (i, j) in weight
-        if weight[(i, j)] >= epsilon
-    }
-
-    if not x:
-        print("  No valid edges found (check similarity scores or epsilon).")
-        return None, None
-
-    # ------------------------------------------------------------------
-    # Constraints
-    # ------------------------------------------------------------------
-
-    # Each paper must receive exactly k reviewer assignments
-    for i in papers:
-        assigned = [x[i, j] for j in reviewers if (i, j) in x]
-        model.addConstr(
-            gp.quicksum(assigned) == k,
-            name=f"paper_demand_{i}"
-        )
-
-    # Each reviewer handles at most max_load papers
-    for j in reviewers:
-        model.addConstr(
-            gp.quicksum(x[i, j] for i in papers if (i, j) in x) <= max_load,
-            name=f"reviewer_capacity_{j}"
-        )
-
-    # ------------------------------------------------------------------
-    # Objective: maximise total similarity
-    # ------------------------------------------------------------------
-    model.setObjective(
-        gp.quicksum(weight[(i, j)] * x[i, j] for (i, j) in x),
-        GRB.MAXIMIZE
-    )
-
-    # ------------------------------------------------------------------
-    # Solve
-    # ------------------------------------------------------------------
-    print("  Optimising...")
-    try:
-        model.optimize()
-    except KeyboardInterrupt:
-        print("  Optimisation interrupted by user.")
-
-    return model, x
-
-
-# ---------------------------------------------------------------------------
-# (Optional) Max-Min / Fairness variant
-# ---------------------------------------------------------------------------
-
-def solve_matching_fairness(papers, reviewers, weight, k=K, max_load=MAX_LOAD,
-                             epsilon=EPSILON, time_limit=None):
-    """
-    Fairness-aware variant: maximise the *minimum* per-paper similarity sum.
-
-    This ensures no paper receives a very poor reviewer panel even if it
-    reduces the global total slightly.
-    """
-    model = gp.Model("reviewer_assignment_fairness")
-    model.setParam("OutputFlag", 1)
-
-    if time_limit is not None:
-        model.setParam("TimeLimit", time_limit)
-
-    x = {
-        (i, j): model.addVar(vtype=GRB.BINARY, name=f"x_{i}_{j}")
-        for (i, j) in weight
-        if weight[(i, j)] >= epsilon
-    }
-
-    if not x:
-        print("  No valid edges found.")
-        return None, None
-
-    # z is the minimum paper score — must be CONTINUOUS, not binary
-    z = model.addVar(vtype=GRB.CONTINUOUS, lb=0.0, name="z")
-
-    # Paper demand
-    for i in papers:
-        assigned = [x[i, j] for j in reviewers if (i, j) in x]
-        model.addConstr(gp.quicksum(assigned) == k,
-                        name=f"paper_demand_{i}")
-
-    # Reviewer capacity
-    for j in reviewers:
-        model.addConstr(
-            gp.quicksum(x[i, j] for i in papers if (i, j) in x) <= max_load,
-            name=f"reviewer_capacity_{j}"
-        )
-
-    # z is a lower bound on every paper's total similarity score
-    for i in papers:
-        model.addConstr(
-            z <= gp.quicksum(
-                weight[(i, j)] * x[i, j]
-                for j in reviewers if (i, j) in x
-            ),
-            name=f"min_score_{i}"
-        )
-
-    model.setObjective(z, GRB.MAXIMIZE)
-
-    print("  Optimising (fairness mode)...")
-    try:
-        model.optimize()
-    except KeyboardInterrupt:
-        print("  Optimisation interrupted by user.")
-
-    return model, x
-
-
-# ---------------------------------------------------------------------------
-# Save Results
-# ---------------------------------------------------------------------------
-
-def save_allocation(x):
-    """
-    Persist the ILP solution to the final_assignment table.
-
-    Uses executemany for efficiency and wraps everything in a single
-    atomic transaction so partial writes never occur.
-    """
-    assignments = [
-        (i, j)
-        for (i, j), var in x.items()
-        if var.X > 0.5
-    ]
+    assignments = list(assignments)
 
     with transaction.atomic():
         with connection.cursor() as cursor:
-
             cursor.execute("DELETE FROM final_assignment")
 
             cursor.executemany("""
-                INSERT INTO final_assignment (paper_id, researcher_id)
-                VALUES (%s, %s)
+                INSERT INTO final_assignment (paper_id, researcher_id, reviewer_status)
+                VALUES (%s, %s, 'pending')
             """, assignments)
 
-            cursor.execute("""
-                UPDATE final_assignment
-                SET reviewer_status = 'pending'
-            """)
-            
             cursor.execute("""
                 UPDATE papers
                 SET status = 'Under review'
             """)
 
-    print(f"  Saved {len(assignments)} assignments.")
+    print(f"Saved {len(assignments)} assignments.")
     return assignments
 
 
-# ---------------------------------------------------------------------------
-# Main Entry Point
-# ---------------------------------------------------------------------------
+# -------------------------------
+# ILP SOLVER
+# -------------------------------
+def solve_ilp(papers, reviewers, weight, k=3, c=6):
 
-def main(k=K, max_load=MAX_LOAD, epsilon=EPSILON,
-         fairness=True, time_limit=None):
-    """
-    Run the full pipeline:
-      1. Load similarity data from the database.
-      2. Check feasibility.
-      3. Solve the ILP.
-      4. Save the solution.
+    model = Model("ReviewerAssignment")
 
-    Parameters
-    ----------
-    k          : reviewers per paper (default 3)
-    max_load   : max papers per reviewer (default 6)
-    epsilon    : minimum similarity threshold (default 0)
-    fairness   : if True, use the max-min (fairness) objective
-    time_limit : optional solver time limit in seconds
+    # VARIABLES
+    x = model.addVars(
+        [(p, r) for (p, r) in weight],
+        vtype=GRB.BINARY,
+        name="x"
+    )
 
-    Returns
-    -------
-    dict with status and objective value
-    """
-    steps = ["Load Data", "Feasibility Check", "Solve ILP", "Save Results"]
-    pbar = tqdm(total=len(steps), desc="ILP Pipeline")
+    z = model.addVar(vtype=GRB.CONTINUOUS, name="z")
 
-    # ------------------------------------------------------------------
-    # Step 1: Load data
-    # ------------------------------------------------------------------
-    print("\n  Loading data...")
+    # -------------------------------
+    # CONSTRAINTS
+    # -------------------------------
+
+    # Each paper gets exactly k reviewers
+    for p in papers:
+        model.addConstr(
+            quicksum(x[p, r] for r in reviewers if (p, r) in x) == k,
+            name=f"paper_{p}"
+        )
+
+    # Reviewer capacity
+    for r in reviewers:
+        model.addConstr(
+            quicksum(x[p, r] for p in papers if (p, r) in x) <= c,
+            name=f"reviewer_{r}"
+        )
+
+    # Fairness constraint
+    for p in papers:
+        model.addConstr(
+            quicksum(weight.get((p, r), 0.0) * x[p, r]
+                     for r in reviewers if (p, r) in x) >= z,
+            name=f"fairness_{p}"
+        )
+
+    # OBJECTIVE
+    model.setObjective(z, GRB.MAXIMIZE)
+
+    model.setParam("OutputFlag", 1)
+
+    # SOLVE
+    model.optimize()
+
+    if model.status != GRB.OPTIMAL:
+        print("❌ No optimal solution found")
+        return None
+
+    # -------------------------------
+    # EXTRACT RESULTS
+    # -------------------------------
+    assignments = {p: [] for p in papers}
+    paper_scores = {}
+
+    selected_pairs = set()
+
+    for (p, r) in x:
+        if x[p, r].X > 0.5:
+            assignments[p].append(r)
+            selected_pairs.add((int(p), int(r)))
+
+    for p in papers:
+        total = sum(weight.get((p, r), 0.0) for r in assignments[p])
+        paper_scores[p] = total
+
+    min_score = min(paper_scores.values()) if paper_scores else 0.0
+
+    # -------------------------------
+    # PRINT RESULTS
+    # -------------------------------
+    print("\n===== FINAL RESULTS =====")
+    print(f"Minimum total edge weight (fairness score): {min_score:.4f}")
+
+    # optional detailed view
+    # for p in sorted(paper_scores):
+    #     print(f"Paper {p}: {paper_scores[p]:.4f}")
+
+    return selected_pairs, paper_scores, min_score
+
+
+# -------------------------------
+# MAIN
+# -------------------------------
+def main():
+
+    print("Loading data from DB...")
     papers, reviewers, weight = load_data()
-    pbar.update(1)
 
-    print(f"  Papers: {len(papers)},  Reviewers: {len(reviewers)},  "
-          f"Edges: {len(weight)}")
+    print(f"Papers: {len(papers)}")
+    print(f"Reviewers: {len(reviewers)}")
+    print(f"Edges: {len(weight)}")
 
-    if not weight:
-        print("  No similarity data found. Run the similarity API first.")
-        pbar.close()
-        return {"status": "error", "message": "No similarity data"}
+    # Feasibility check
+    if len(papers) * 3 > len(reviewers) * 6:
+        print("⚠️ WARNING: Problem may be infeasible!")
 
-    # ------------------------------------------------------------------
-    # Step 2: Feasibility check
-    # ------------------------------------------------------------------
-    print("\n  Checking feasibility...")
-    if not check_feasibility(papers, reviewers, weight, k=k, max_load=max_load):
-        pbar.close()
-        return {"status": "error", "message": "Pre-solve feasibility check failed"}
-    pbar.update(1)
+    result = solve_ilp(papers, reviewers, weight)
 
-    # ------------------------------------------------------------------
-    # Step 3: Solve
-    # ------------------------------------------------------------------
-    print(f"\n  Solving ({'fairness/max-min' if fairness else 'total similarity'} objective)...")
+    if result is None:
+        return
 
-    if fairness:
-        model, x = solve_matching_fairness(
-            papers, reviewers, weight,
-            k=k, max_load=max_load, epsilon=epsilon, time_limit=time_limit
-        )
-    else:
-        model, x = solve_matching(
-            papers, reviewers, weight,
-            k=k, max_load=max_load, epsilon=epsilon, time_limit=time_limit
-        )
-    pbar.update(1)
+    selected_pairs, paper_scores, min_score = result
 
-    if model is None or model.SolCount == 0:
-        print("  No feasible solution found.")
-        pbar.close()
-        return {"status": "error", "message": "No feasible solution"}
-
-    obj_value = model.ObjVal
-    print(f"\n  Objective value: {obj_value:.4f}")
-
-    if model.Status == GRB.OPTIMAL:
-        print("  Solution is optimal.")
-    else:
-        print(f"  Solution is feasible but not proven optimal "
-              f"(Gurobi status code: {model.Status}).")
-
-    # ------------------------------------------------------------------
-    # Step 4: Save
-    # ------------------------------------------------------------------
-    print("\n  Saving assignments...")
-    save_allocation(x)
-    pbar.update(1)
-
-    pbar.close()
-    print("\n  Matching complete!")
+    # -------------------------------
+    # SAVE TO DATABASE
+    # -------------------------------
+    print("\nSaving assignments to DB...")
+    save_allocation(selected_pairs)
 
     return {
-        "status": "success",
-        "objective": float(obj_value),
-        "mode": "fairness" if fairness else "total_similarity",
+        "min_score": min_score,
+        "assignments": selected_pairs,
+        "paper_scores": paper_scores
     }
 
 
-# ---------------------------------------------------------------------------
-# CLI usage
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Reviewer Assignment ILP")
-    parser.add_argument("--k",          type=int,   default=K,
-                        help="Reviewers per paper")
-    parser.add_argument("--max-load",   type=int,   default=MAX_LOAD,
-                        help="Max papers per reviewer")
-    parser.add_argument("--epsilon",    type=float, default=EPSILON,
-                        help="Minimum similarity threshold")
-    parser.add_argument("--fairness",   action="store_true",
-                        help="Use max-min fairness objective")
-    parser.add_argument("--time-limit", type=float, default=None,
-                        help="Gurobi time limit (seconds)")
-    args = parser.parse_args()
-
-    result = main(
-        k=args.k,
-        max_load=args.max_load,
-        epsilon=args.epsilon,
-        fairness=args.fairness,
-        time_limit=args.time_limit,
-    )
-    print(result)
+    main()

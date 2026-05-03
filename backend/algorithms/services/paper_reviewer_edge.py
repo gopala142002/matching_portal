@@ -14,6 +14,10 @@ from tqdm import tqdm
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
+
+# -------------------------------
+# TABLE PREPARATION
+# -------------------------------
 def prepare_paper_reviewer_table():
     with connection.cursor() as cursor:
 
@@ -34,25 +38,21 @@ def prepare_paper_reviewer_table():
             TRUNCATE TABLE paper_to_reviewer RESTART IDENTITY;
         """)
 
+        # IMPORTANT: No institution filtering anymore
         cursor.execute("""
             INSERT INTO paper_to_reviewer (researcher_id, paper_id)
-            SELECT
-                r.id,
-                pm.paper_id
+            SELECT r.id, p.id
             FROM researchers r
-            CROSS JOIN paper_metadata pm
-            WHERE r.is_reviewer
-            AND NOT EXISTS (
-                SELECT 1
-                FROM jsonb_array_elements_text(r.institutions) AS inst
-                JOIN jsonb_array_elements_text(pm.paper_affiliations) AS aff
-                ON inst = aff
-            );
+            CROSS JOIN papers p
+            WHERE r.is_reviewer = TRUE;
         """)
 
-    print(" paper_to_reviewer refreshed")
+    print("paper_to_reviewer refreshed")
 
 
+# -------------------------------
+# HELPERS
+# -------------------------------
 def clean_text(text):
     if not text:
         return ""
@@ -71,24 +71,49 @@ def parse_field(field):
     return str(field)
 
 
+def get_overlap_score(inst1, inst2):
+    """
+    Jaccard similarity between institution sets
+    """
+    try:
+        set1 = set(json.loads(inst1))
+        set2 = set(json.loads(inst2))
+    except:
+        return 0.0
+
+    if not set1 or not set2:
+        return 0.0
+
+    intersection = len(set1 & set2)
+    union = len(set1 | set2)
+
+    return intersection / union
+
+
+# -------------------------------
+# MAIN SCORING FUNCTION
+# -------------------------------
 def compute_similarity_scores(batch_size=2000):
 
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT ptr.id,
-                   p.keywords, p.research_domain,
-                   r.keywords, r.research_interests
+                   p.keywords,
+                   r.research_interests,
+                   r.institutions,
+                   p.paper_affiliations
             FROM paper_to_reviewer ptr
             JOIN papers p ON ptr.paper_id = p.id
             JOIN researchers r ON ptr.researcher_id = r.id
+            WHERE r.is_reviewer = TRUE;
         """)
         rows = cursor.fetchall()
 
     if not rows:
-        print(" No data found")
+        print("No data found")
         return {"status": "error", "message": "No data"}
 
-    print(f" Processing {len(rows)} pairs...")
+    print(f"Processing {len(rows)} pairs...")
 
     similarities = []
 
@@ -99,34 +124,47 @@ def compute_similarity_scores(batch_size=2000):
         ids = []
         paper_texts = []
         reviewer_texts = []
+        r_inst_list = []
+        p_aff_list = []
 
         for row in batch:
-            ptr_id, p_kw, p_dom, r_kw, r_int = row
+            ptr_id, p_kw, r_int, r_inst, p_aff = row
 
             p_kw = parse_field(p_kw)
-            p_dom = parse_field(p_dom)
-            r_kw = parse_field(r_kw)
             r_int = parse_field(r_int)
 
-            paper_text = clean_text(f"{p_kw} {p_dom}")
-            reviewer_text = clean_text(f"{r_kw} {r_int}")
+            paper_text = clean_text(p_kw)
+            reviewer_text = clean_text(r_int)
 
             ids.append(ptr_id)
             paper_texts.append(paper_text)
             reviewer_texts.append(reviewer_text)
 
+            r_inst_list.append(r_inst)
+            p_aff_list.append(p_aff)
+
+        # Embeddings
         paper_emb = model.encode(paper_texts, batch_size=64, convert_to_numpy=True)
         reviewer_emb = model.encode(reviewer_texts, batch_size=64, convert_to_numpy=True)
 
+        # Normalize
         paper_emb /= np.linalg.norm(paper_emb, axis=1, keepdims=True)
         reviewer_emb /= np.linalg.norm(reviewer_emb, axis=1, keepdims=True)
+
         sims = np.sum(paper_emb * reviewer_emb, axis=1)
 
+        # Combine with institution penalty
         for i in range(len(ids)):
-            sim = float(max(0.0, min(1.0, sims[i])))
-            similarities.append((sim, ids[i]))
+            keyword_sim = float(max(0.0, min(1.0, sims[i])))
 
-    print(" Bulk updating database...")
+            inst_overlap = get_overlap_score(r_inst_list[i], p_aff_list[i])
+
+            # Final score
+            final_score = keyword_sim * (1 - inst_overlap)
+
+            similarities.append((final_score, ids[i]))
+
+    print("Bulk updating database...")
 
     with connection.cursor() as cursor:
         cursor.executemany("""
@@ -135,13 +173,17 @@ def compute_similarity_scores(batch_size=2000):
             WHERE id = %s
         """, similarities)
 
-    print(f" Updated {len(similarities)} similarity scores")
+    print(f"Updated {len(similarities)} similarity scores")
 
     return {
         "status": "success",
         "updated": len(similarities)
     }
 
+
+# -------------------------------
+# MAIN DRIVER
+# -------------------------------
 def main():
 
     steps = [
@@ -151,18 +193,19 @@ def main():
 
     overall = tqdm(total=len(steps), desc="Overall Progress")
 
-    print("\n Step 1: Preparing table...")
+    print("\nStep 1: Preparing table...")
     prepare_paper_reviewer_table()
     overall.update(1)
 
-    print("\n Step 2: Computing similarity...")
+    print("\nStep 2: Computing similarity...")
     result = compute_similarity_scores()
     overall.update(1)
 
     overall.close()
 
-    print("\n Completed!")
+    print("\nCompleted!")
     return result
+
 
 if __name__ == "__main__":
     main()

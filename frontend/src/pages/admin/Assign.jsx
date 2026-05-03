@@ -59,8 +59,8 @@ export default function AdminAssign() {
       if (algoKey === "ILP") {
         endpoint = "/api/run_ilp/";
       }
-      else if (algoKey === "ILPR") {
-        endpoint = "/api/run_ilpr/"
+      else if (algoKey === "LP_with_iterative_rounding") {
+        endpoint = "/api/run_lp_with_iterative_rounding/"
       }
       else if (algoKey === "NF") {
         endpoint = "/api/run_network_flow/";
@@ -119,7 +119,7 @@ export default function AdminAssign() {
           </button>
           <button
             disabled={!crossJoinReady || loading}
-            onClick={() => runAlgorithm("ILPR")}
+            onClick={() => runAlgorithm("LP_with_iterative_rounding")}
             className={`px-4 py-2 rounded-xl text-white ${crossJoinReady && !loading
               ? "bg-gray-900"
               : "bg-gray-400 cursor-not-allowed"
