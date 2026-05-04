@@ -1,7 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 
-/* Single menu item */
 function Item({ to, label }) {
   return (
     <NavLink
@@ -34,8 +33,6 @@ export default function Sidebar({ role, open, onClose }) {
       { to: "/admin/dashboard", label: "Dashboard" },
       { to: "/admin/reviewers", label: "Reviewers" },
       { to: "/admin/assign", label: "Assignment Algorithms" },
-
-      { to: "/admin/assignments", label: "Show Assignment" },
     ],
   };
 
