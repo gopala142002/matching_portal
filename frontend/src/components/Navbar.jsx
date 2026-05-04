@@ -41,7 +41,7 @@ export default function Navbar({ title, onMenuClick }) {
       localStorage.removeItem("is_admin"); // optional
       clearRole();
 
-      navigate("/login");
+      navigate("/");
     }
   }
 
