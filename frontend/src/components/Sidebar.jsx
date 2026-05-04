@@ -6,10 +6,9 @@ function Item({ to, label }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `block rounded-xl px-3 py-2 text-sm font-medium transition ${
-          isActive
-            ? "bg-gray-900 text-white"
-            : "text-gray-700 hover:bg-gray-100"
+        `block rounded-xl px-3 py-2 text-sm font-medium transition ${isActive
+          ? "bg-gray-900 text-white"
+          : "text-gray-700 hover:bg-gray-100"
         }`
       }
     >
@@ -83,13 +82,7 @@ export default function Sidebar({ role, open, onClose }) {
           <Item to="../pages/profile/EditProfile" label="Edit Profile" />
         </div>
 
-        {/* Info card */}
-        <div className="mt-6 rounded-2xl bg-gray-50 p-4 text-sm text-gray-600">
-          <div className="font-medium text-gray-900">Bias-Free Review</div>
-          <div className="mt-1">
-            Reviewer pages hide author identity to support double-blind workflow.
-          </div>
-        </div>
+
       </aside>
     </>
   );
