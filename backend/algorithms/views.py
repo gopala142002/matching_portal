@@ -7,12 +7,12 @@ from django.http import JsonResponse
 from papers.models import Paper
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
+from .services.reviewer_reviewer_edge import main as run_reviewer_edge 
 from .services.lp_with_iterative_rounding import main as run_lp_with_iterative_rounding
 from .services.Iterative_max_flow_fair import main as run_iterative_assignment_algo
 from .services.network_flow import main as run_network_flow
 
 
-# 🔒 Status constants
 STATUS_SUBMITTED = "submitted"
 STATUS_UNDER_REVIEW = "Under review"
 
@@ -66,6 +66,17 @@ def run_similarity_api(request):
         with transaction.atomic():
             result = run_similarity()
             Paper.objects.filter(status=STATUS_SUBMITTED).update(status=STATUS_UNDER_REVIEW)
+        return Response(result)
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_reviewer_edge_weights_api(request):
+    try:
+        with transaction.atomic():
+            result = run_reviewer_edge()
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
