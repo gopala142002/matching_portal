@@ -7,7 +7,8 @@ from accounts.views import (
     verify_token,
     profile,
     logout_view,
-    update_reviewer_status
+    update_reviewer_status,
+    ReviewerListView  # ✅ Add this
 )
 
 urlpatterns = [
@@ -18,5 +19,6 @@ urlpatterns = [
     path("profile/", profile),
     path("logout/", logout_view),
     path("update-reviewer-status/", update_reviewer_status),
-    path("token/refresh/", TokenRefreshView.as_view())
+    path("token/refresh/", TokenRefreshView.as_view()),
+    path("reviewers/", ReviewerListView.as_view(), name="reviewer-list"),
 ]

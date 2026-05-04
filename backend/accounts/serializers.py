@@ -6,15 +6,28 @@ from accounts.models import Researcher
 
 User = get_user_model()
 
+class ResearcherSerializer(serializers.ModelSerializer):
+    """
+    Matches your Model: id, name, institutions, research_interests, is_reviewer
+    """
+    email = serializers.EmailField(source="user.email", read_only=True)
+    
+    class Meta:
+        model = Researcher
+        fields = [
+            "id", "name", "email", "institutions", 
+            "research_interests", "is_reviewer",
+        ]
+
 class RegisterSerializer(serializers.Serializer):
+    """
+    Only collects data that the Researcher model can actually store.
+    """
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
     name = serializers.CharField()
     institutions = serializers.ListField(child=serializers.CharField(), allow_empty=False)
-    department = serializers.CharField()
-    academic_position = serializers.CharField()
     research_interests = serializers.ListField(child=serializers.CharField(), allow_empty=False)
-    keywords = serializers.ListField(child=serializers.CharField(), allow_empty=False)
     is_reviewer = serializers.BooleanField(required=False, default=False)
 
     def validate_email(self, value):
@@ -27,25 +40,9 @@ class RegisterSerializer(serializers.Serializer):
         validate_password(value)
         return value
 
-    def _clean_list(self, values, lower=False):
-        cleaned = []
-        for v in values:
-            v = v.strip()
-            if not v:
-                continue
-            if lower:
-                v = v.lower()
-            cleaned.append(v)
+    def _clean_list(self, values):
+        cleaned = [v.strip() for v in values if v.strip()]
         return list(dict.fromkeys(cleaned))
-
-    def validate_keywords(self, value):
-        return self._clean_list(value, lower=True)
-
-    def validate_research_interests(self, value):
-        return self._clean_list(value, lower=True)
-
-    def validate_institutions(self, value):
-        return self._clean_list(value, lower=False)
 
     @transaction.atomic
     def create(self, validated_data):
@@ -59,12 +56,8 @@ class RegisterSerializer(serializers.Serializer):
         Researcher.objects.create(
             user=user,
             name=validated_data["name"],
-            institutions=validated_data["institutions"],
-            department=validated_data["department"],
-            academic_position=validated_data["academic_position"],
-            research_interests=validated_data["research_interests"],
-            keywords=validated_data["keywords"],
-            h_index=0,
+            institutions=self._clean_list(validated_data["institutions"]),
+            research_interests=self._clean_list(validated_data["research_interests"]),
             is_reviewer=validated_data.get("is_reviewer", False)
         )
         return user
@@ -76,34 +69,14 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, data):
         email = data.get("email", "").strip().lower()
         password = data.get("password")
-        
-        if not email or not password:
-            raise serializers.ValidationError("Email and password are required")
         user_obj = User.objects.filter(email__iexact=email).first()
-        
         if not user_obj:
-            raise serializers.ValidationError("Invalid email or password")
-
+            raise serializers.ValidationError("Invalid credentials")
         user = authenticate(username=user_obj.username, password=password)
-        
-        if not user:
-            raise serializers.ValidationError("Invalid email or password")
-            
-        if not user.is_active:
-            raise serializers.ValidationError("Account is disabled")
-
+        if not user or not user.is_active:
+            raise serializers.ValidationError("Invalid credentials")
         data["user"] = user
         return data
-
-class ResearcherSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source="user.email", read_only=True)
-    class Meta:
-        model = Researcher
-        fields = [
-            "id", "name", "email", "institutions", "department",
-            "academic_position", "research_interests", "keywords",
-            "h_index", "is_reviewer",
-        ]
 
 class UpdateReviewerStatusSerializer(serializers.ModelSerializer):
     class Meta:

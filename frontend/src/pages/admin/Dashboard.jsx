@@ -1,53 +1,48 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import StatsCard from "../../components/StatsCard";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
-import { getPapers, getReviewers } from "../../data/mockDb";
-import api from "../api";   // ✅ adjust if needed
+import api from "../api";
 
 export default function AdminDashboard() {
-  const papers = getPapers();
-  const reviewers = getReviewers();
+  const [papers, setPapers] = useState([]);
+  const [stats, setStats] = useState({ total: 0, submitted: 0, assigned: 0, reviewers: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const totalPapers = papers.length;
-  const totalReviewers = reviewers.length;
-  const assigned = papers.filter((p) => p.assignedReviewers.length > 0).length;
-  const assignedPct = totalPapers ? Math.round((assigned / totalPapers) * 100) : 0;
-  const pendingDecisions = papers.filter((p) => !p.decision).length;
-
-  // 🔥 CALL MATCHING API
-  const runMatching = async () => {
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const token = localStorage.getItem("access");
-
-      const res = await api.post(
-        "/api/auth/run-matching/",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/api/papers/");
+        if (res.data && res.data.status) {
+          setPapers(res.data.papers || []);
+          setStats(res.data.counts);
+        } else {
+          throw new Error(res.data?.message || "Failed to fetch data");
         }
-      );
+      } catch (err) {
+        setError(err.message);
+        console.error("Dashboard Load Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, []);
 
-      setMessage(res.data.message);
-    } catch (err) {
-      setMessage(
-        err.response?.data?.message || "Failed to run matching"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPapers = papers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(papers.length / itemsPerPage);
 
   const columns = [
-    { key: "id", header: "Paper ID" },
+    { key: "id", header: "ID" },
     { key: "title", header: "Title" },
     {
       key: "status",
@@ -55,48 +50,55 @@ export default function AdminDashboard() {
       render: (r) => <StatusBadge status={r.status} />,
     },
     {
-      key: "assigned",
-      header: "Assigned Reviewers",
-      render: (r) => r.assignedReviewers.length,
+      key: "author",
+      header: "Primary Author",
+      render: (r) => (r.author_names && r.author_names[0]) || "N/A",
     },
   ];
 
+  if (loading) return <div className="p-20 text-center font-medium">Loading Samvad Dashboard...</div>;
+  if (error) return <div className="p-20 text-center text-red-500">Error: {error}</div>;
+
   return (
     <div className="space-y-6">
-
-      {/* 🔥 RUN MATCHING BUTTON */}
-      {/* <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Admin Dashboard</h2>
-
-        <button
-          onClick={runMatching}
-          disabled={loading}
-          className="bg-black text-white px-4 py-2 rounded-xl"
-        >
-          {loading ? "Running..." : "Run Matching"}
-        </button>
-      </div> */}
-
-      {/* {message && (
-        <div className="text-sm bg-gray-100 p-2 rounded">
-          {message}
-        </div>
-      )} */}
-
-      {/* STATS */}
+      {/* 📊 Stats Section */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard label="Total Papers" value={totalPapers} />
-        <StatsCard label="Total Reviewers" value={totalReviewers} />
-        <StatsCard label="Papers Under Review" value={`${assignedPct}%`} />
-        <StatsCard label="Pending Assignments" value={pendingDecisions} />
+        <StatsCard label="Total Papers" value={stats.total} />
+        <StatsCard label="Total Reviewers" value={stats.reviewers} />
+        <StatsCard label="Submitted" value={stats.submitted} />
+        <StatsCard label="Assigned" value={stats.assigned} />
       </div>
 
-      {/* TABLE */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Submissions Preview</h3>
-        </div>
-        <DataTable columns={columns} rows={papers.slice(0, 6)} rowKey="id" />
+      {/* 📑 Table Section */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Platform Submissions</h3>
+        
+        <DataTable columns={columns} rows={currentPapers} rowKey="id" />
+
+        {/* Pagination Controls */}
+        {papers.length > itemsPerPage && (
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-50">
+            <p className="text-sm text-gray-500">
+              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, papers.length)} of {papers.length}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium border rounded-md disabled:opacity-30 hover:bg-gray-50 transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium border rounded-md disabled:opacity-30 hover:bg-gray-50 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
