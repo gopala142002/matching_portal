@@ -4,12 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from papers.models import Paper
 from papers.serializers import PaperSerializer, PaperCreateSerializer
 
-# ➕ Create View
 class PaperCreateView(generics.CreateAPIView):
     serializer_class = PaperCreateSerializer
     permission_classes = [IsAuthenticated]
 
-# 📋 List View (With filtering and counts)
 class PaperListView(generics.ListAPIView):
     serializer_class = PaperSerializer
     permission_classes = [IsAuthenticated]
@@ -38,7 +36,6 @@ class PaperListView(generics.ListAPIView):
             }
         })
 
-# 🔍 Detail View
 class PaperDetailView(generics.RetrieveAPIView):
     serializer_class = PaperSerializer
     permission_classes = [IsAuthenticated]

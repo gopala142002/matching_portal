@@ -59,15 +59,12 @@ export default function AuthorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard label="Submitted" value={papers.length} />
         <StatsCard label="Under Review" value={counts.under_review} />
         <StatsCard label="Accepted" value={counts.accepted} />
         <StatsCard label="Rejected" value={counts.rejected} />
       </div>
-
-      {/* Table */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Latest Submissions</h3>
@@ -80,7 +77,7 @@ export default function AuthorDashboard() {
           </Link>
         </div>
 
-        <DataTable columns={columns} rows={latest} rowKey="id" /> {/* ✅ FIXED */}
+        <DataTable columns={columns} rows={latest} rowKey="id" /> 
       </div>
     </div>
   );

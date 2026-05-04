@@ -6,7 +6,6 @@ from accounts.models import Researcher
 
 User = get_user_model()
 
-# 🔐 Register Serializer
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
@@ -70,7 +69,6 @@ class RegisterSerializer(serializers.Serializer):
         )
         return user
 
-# 🔐 Login Serializer (Resilient to duplicate emails)
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
@@ -81,9 +79,6 @@ class LoginSerializer(serializers.Serializer):
         
         if not email or not password:
             raise serializers.ValidationError("Email and password are required")
-
-        # 💡 FIX: Using .filter().first() instead of .get() to prevent 
-        # MultipleObjectsReturned crashes if duplicates exist in the DB.
         user_obj = User.objects.filter(email__iexact=email).first()
         
         if not user_obj:
@@ -100,7 +95,6 @@ class LoginSerializer(serializers.Serializer):
         data["user"] = user
         return data
 
-# 👤 Researcher Profile Serializer
 class ResearcherSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
     class Meta:
@@ -111,7 +105,6 @@ class ResearcherSerializer(serializers.ModelSerializer):
             "h_index", "is_reviewer",
         ]
 
-# 👨‍⚖️ Reviewer Update Serializer
 class UpdateReviewerStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Researcher

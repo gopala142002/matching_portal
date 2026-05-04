@@ -6,3 +6,4 @@ psycopg2-binary
 requests
 gurobipy
 numpy
+sentence-transformers
