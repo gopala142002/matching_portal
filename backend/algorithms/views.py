@@ -1,9 +1,10 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from django.db import connection
+from django.db import connection, transaction
 from django.http import JsonResponse
 
+from papers.models import Paper  
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
 from .services.lp_with_iterative_rounding import main as run_lp_with_iterative_rounding
@@ -11,25 +12,20 @@ from .services.Iterative_max_flow_fair import main as run_iterative_assignment_a
 from .services.network_flow import main as run_network_flow
 
 
-# ---------------------------------------------------------------------------
-# Network Flow
-# ---------------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_network_flow_algo(request):
     try:
-        result = run_network_flow()
+        with transaction.atomic():
+            result = run_network_flow()
+            # Update status after algorithm success
+            Paper.objects.filter(status="submitted").update(status="Assigned")
         return Response(result)
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# ILP matcher
-# ---------------------------------------------------------------------------
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
@@ -37,78 +33,57 @@ def run_matching_with_ILP(request):
         result = run_ilp()
         return Response(result)
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Iterative Max-Min Flow Assignment
-# ---------------------------------------------------------------------------
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_iterative_assignment(request):
     try:
-        result = run_iterative_assignment_algo()
+        with transaction.atomic():
+            result = run_iterative_assignment_algo()
+            Paper.objects.filter(status="submitted").update(status="Assigned")
         return Response(result)
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Simple ILP (same as ILP but direct call)
-# ---------------------------------------------------------------------------
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching(request):
     try:
         return Response(run_ilp())
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Similarity / edge-weight computation
-# ---------------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_similarity_api(request):
     try:
-        result = run_similarity()
+        with transaction.atomic():
+            result = run_similarity()
+            # If this counts as the first step where assignment logic starts
+            Paper.objects.filter(status="submitted").update(status="Assigned")
         return Response(result)
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Iterative LP Rounding
-# ---------------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_iterative_rounding(request):
     try:
-        result = run_lp_with_iterative_rounding()
+        with transaction.atomic():
+            result = run_lp_with_iterative_rounding()
+            Paper.objects.filter(status="submitted").update(status="Assigned")
         return Response(result)
     except Exception as e:
-        return Response(
-            {"status": "error", "message": str(e)},
-            status=500
-        )
+        return Response({"status": "error", "message": str(e)}, status=500)
 
 
-# ---------------------------------------------------------------------------
-# Utility: check whether edge-weight table exists and has data
-# ---------------------------------------------------------------------------
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def check_edge_weight_table(request):
@@ -127,7 +102,4 @@ def check_edge_weight_table(request):
         return JsonResponse({"doesExist": bool(has_data)})
 
     except Exception as e:
-        return JsonResponse(
-            {"doesExist": False, "error": str(e)},
-            status=500
-        )
+        return JsonResponse({"doesExist": False, "error": str(e)}, status=500)

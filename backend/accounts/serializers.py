@@ -6,7 +6,7 @@ from accounts.models import Researcher
 
 User = get_user_model()
 
-# 🔐 Register
+# 🔐 Register Serializer
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
@@ -70,7 +70,7 @@ class RegisterSerializer(serializers.Serializer):
         )
         return user
 
-# 🔐 Login
+# 🔐 Login Serializer (Resilient to duplicate emails)
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True)
@@ -78,24 +78,29 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, data):
         email = data.get("email", "").strip().lower()
         password = data.get("password")
+        
         if not email or not password:
             raise serializers.ValidationError("Email and password are required")
 
-        try:
-            user_obj = User.objects.get(email__iexact=email)
-        except User.DoesNotExist:
+        # 💡 FIX: Using .filter().first() instead of .get() to prevent 
+        # MultipleObjectsReturned crashes if duplicates exist in the DB.
+        user_obj = User.objects.filter(email__iexact=email).first()
+        
+        if not user_obj:
             raise serializers.ValidationError("Invalid email or password")
 
         user = authenticate(username=user_obj.username, password=password)
+        
         if not user:
             raise serializers.ValidationError("Invalid email or password")
+            
         if not user.is_active:
             raise serializers.ValidationError("Account is disabled")
 
         data["user"] = user
         return data
 
-# 👤 Researcher Profile
+# 👤 Researcher Profile Serializer
 class ResearcherSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email", read_only=True)
     class Meta:
@@ -106,7 +111,7 @@ class ResearcherSerializer(serializers.ModelSerializer):
             "h_index", "is_reviewer",
         ]
 
-# 👨‍⚖️ Reviewer Update
+# 👨‍⚖️ Reviewer Update Serializer
 class UpdateReviewerStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Researcher
