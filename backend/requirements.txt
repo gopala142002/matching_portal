@@ -2,3 +2,7 @@ Django
 djangorestframework
 django-cors-headers
 djangorestframework-simplejwt
+psycopg2-binary
+requests
+gurobipy
+numpy

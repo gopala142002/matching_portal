@@ -1,81 +1,50 @@
 from rest_framework import serializers
 from papers.models import Paper
 
-
-
-
-
-# 📄 Read Serializer
+# 📄 Full Paper Serializer (For Reading)
 class PaperSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Paper
-        fields = [
-            "id",
-            "title",
-            "abstract",
-            "keywords",
-            "research_domain",
-            "pdf_url",
-            "status",
-            "created_at",
-            "metadata",
-        ]
+        fields = "__all__"
 
-
-# 👤 Author Input
+# 👤 Author Input Helper
 class AuthorInputSerializer(serializers.Serializer):
     name = serializers.CharField()
-    institute = serializers.CharField(required=False)
+    institute = serializers.CharField(required=False, allow_blank=True)
 
-
-# 📄 Create Serializer
+# 📄 Create Paper Serializer (For Writing)
 class PaperCreateSerializer(serializers.ModelSerializer):
     authors = AuthorInputSerializer(many=True, write_only=True)
 
     class Meta:
         model = Paper
         fields = [
-            "title",
-            "abstract",
-            "keywords",
-            "research_domain",
-            "pdf_url",
-            "authors",
+            "title", 
+            "abstract", 
+            "keywords", 
+            "pdf_url", 
+            "authors"
         ]
 
-    # 🔹 Clean keywords
     def validate_keywords(self, value):
+        """Clean and normalize keywords into a lowercase list."""
         if isinstance(value, str):
             value = value.split(",")
-
         return list(set([v.strip().lower() for v in value if v.strip()]))
 
-    # 🔹 Clean domain
-    def validate_research_domain(self, value):
-        if isinstance(value, str):
-            value = value.split(",")
-
-        return list(set([v.strip().title() for v in value if v.strip()]))
-
-    # 🔹 Create Paper + Metadata
     def create(self, validated_data):
-        request = self.context["request"]
+        """Map the 'authors' input into author_names and paper_affiliations."""
         authors_data = validated_data.pop("authors")
+        request = self.context.get("request")
 
-        author_names = []
-        affiliations = set()
-
-        for author in authors_data:
-            author_names.append(author["name"].strip())
-
-            if author.get("institute"):
-                affiliations.add(author["institute"].strip())
+        # Split author details into the fields defined in your model
+        names = [a["name"].strip() for a in authors_data]
+        affiliations = list(set([a["institute"].strip() for a in authors_data if a.get("institute")]))
 
         paper = Paper.objects.create(
             author=request.user,
+            author_names=names,
+            paper_affiliations=affiliations,
             **validated_data
         )
-
-
         return paper
