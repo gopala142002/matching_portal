@@ -159,18 +159,18 @@ export default function AdminAssign() {
           Processing...
         </div>
       )}
-      {result && (
-        <div className="space-y-2">
-          {result.map((r) => (
-            <div key={r.id} className="border p-3 rounded">
-              <div className="font-medium">{r.id}</div>
-              <div className="text-sm text-gray-600">
-                {r.assignedReviewers.join(", ")}
-              </div>
-            </div>
-          ))}
+      {Array.isArray(result) && result.length > 0 && (
+  <div className="space-y-2">
+    {result.map((r) => (
+      <div key={r.id} className="border p-3 rounded">
+        <div className="font-medium">{r.id}</div>
+        <div className="text-sm text-gray-600">
+          {r.assignedReviewers?.join(", ")}
         </div>
-      )}
+      </div>
+    ))}
+  </div>
+)}
     </div>
   );
 }
