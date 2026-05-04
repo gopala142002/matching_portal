@@ -65,7 +65,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
 
       {/* 🔥 RUN MATCHING BUTTON */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Admin Dashboard</h2>
 
         <button
@@ -75,20 +75,20 @@ export default function AdminDashboard() {
         >
           {loading ? "Running..." : "Run Matching"}
         </button>
-      </div>
+      </div> */}
 
-      {message && (
+      {/* {message && (
         <div className="text-sm bg-gray-100 p-2 rounded">
           {message}
         </div>
-      )}
+      )} */}
 
       {/* STATS */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard label="Total Papers" value={totalPapers} />
         <StatsCard label="Total Reviewers" value={totalReviewers} />
-        <StatsCard label="Assigned %" value={`${assignedPct}%`} />
-        <StatsCard label="Pending Decisions" value={pendingDecisions} />
+        <StatsCard label="Papers Under Review" value={`${assignedPct}%`} />
+        <StatsCard label="Pending Assignments" value={pendingDecisions} />
       </div>
 
       {/* TABLE */}
