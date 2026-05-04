@@ -284,11 +284,34 @@ export default function SubmitPaper() {
         </select>
 
         {/* PDF */}
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => setPdf(e.target.files?.[0] || null)}
-        />
+        <div className="w-full">
+  <input
+    id="pdfUpload"
+    type="file"
+    accept="application/pdf"
+    onChange={(e) => setPdf(e.target.files?.[0] || null)}
+    className="hidden"
+  />
+
+  <label
+    htmlFor="pdfUpload"
+    className="cursor-pointer flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-white p-6 text-center hover:border-indigo-500 hover:bg-indigo-50 transition"
+  >
+    <span className="text-sm text-gray-500">
+      📄 Upload your paper (PDF)
+    </span>
+
+    <span className="mt-2 text-xs text-gray-400">
+      Click to browse
+    </span>
+
+    {pdf && (
+      <span className="mt-3 text-sm font-medium text-indigo-700">
+        ✅ {pdf.name}
+      </span>
+    )}
+  </label>
+</div>
 
         <button className="rounded-xl bg-gray-900 px-5 py-2 text-white">
           Submit Paper
