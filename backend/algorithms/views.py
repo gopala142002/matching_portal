@@ -4,12 +4,17 @@ from rest_framework.response import Response
 from django.db import connection, transaction
 from django.http import JsonResponse
 
-from papers.models import Paper  
+from papers.models import Paper
 from .services.ILP import main as run_ilp
 from .services.paper_reviewer_edge import main as run_similarity
+from .services.reviewer_reviewer_edge import main as run_reviewer_edge 
 from .services.lp_with_iterative_rounding import main as run_lp_with_iterative_rounding
 from .services.Iterative_max_flow_fair import main as run_iterative_assignment_algo
 from .services.network_flow import main as run_network_flow
+
+
+STATUS_SUBMITTED = "submitted"
+STATUS_UNDER_REVIEW = "Under review"
 
 
 @api_view(['POST'])
@@ -18,23 +23,19 @@ def run_network_flow_algo(request):
     try:
         with transaction.atomic():
             result = run_network_flow()
-            # Update status after algorithm success
-            Paper.objects.filter(status="submitted").update(status="Assigned")
+            Paper.objects.filter(status=STATUS_SUBMITTED).update(status=STATUS_UNDER_REVIEW)
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
-
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_matching_with_ILP(request):
     try:
-        result = run_ilp()
-        return Response(result)
+        return Response(run_ilp())
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
-
 
 
 @api_view(['POST'])
@@ -43,11 +44,10 @@ def run_iterative_assignment(request):
     try:
         with transaction.atomic():
             result = run_iterative_assignment_algo()
-            Paper.objects.filter(status="submitted").update(status="Assigned")
+            Paper.objects.filter(status=STATUS_SUBMITTED).update(status=STATUS_UNDER_REVIEW)
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
-
 
 
 @api_view(['POST'])
@@ -65,8 +65,18 @@ def run_similarity_api(request):
     try:
         with transaction.atomic():
             result = run_similarity()
-            # If this counts as the first step where assignment logic starts
-            Paper.objects.filter(status="submitted").update(status="Assigned")
+            Paper.objects.filter(status=STATUS_SUBMITTED).update(status=STATUS_UNDER_REVIEW)
+        return Response(result)
+    except Exception as e:
+        return Response({"status": "error", "message": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def run_reviewer_edge_weights_api(request):
+    try:
+        with transaction.atomic():
+            result = run_reviewer_edge()
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)
@@ -78,7 +88,7 @@ def run_matching_with_iterative_rounding(request):
     try:
         with transaction.atomic():
             result = run_lp_with_iterative_rounding()
-            Paper.objects.filter(status="submitted").update(status="Assigned")
+            Paper.objects.filter(status=STATUS_SUBMITTED).update(status=STATUS_UNDER_REVIEW)
         return Response(result)
     except Exception as e:
         return Response({"status": "error", "message": str(e)}, status=500)

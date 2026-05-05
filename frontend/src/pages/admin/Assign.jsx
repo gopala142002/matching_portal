@@ -5,6 +5,7 @@ export default function AdminAssign() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [crossJoinReady, setCrossJoinReady] = useState(false);
+
   useEffect(() => {
     async function checkTable() {
       try {
@@ -19,6 +20,8 @@ export default function AdminAssign() {
 
     checkTable();
   }, []);
+
+  // ✅ Paper-Reviewer Edge Weights
   async function generateCrossJoin() {
     if (crossJoinReady) {
       const confirmAction = window.confirm(
@@ -30,7 +33,7 @@ export default function AdminAssign() {
     setLoading(true);
 
     try {
-      console.log("Generating edge weights...");
+      console.log("Generating paper-reviewer edge weights...");
 
       const res = await api.post("/api/run_edge_weights/");
       console.log("Response:", res.data);
@@ -47,6 +50,31 @@ export default function AdminAssign() {
       setLoading(false);
     }
   }
+
+  // ✅ NEW: Reviewer-Reviewer Edge Weights
+  async function generateReviewerEdgeWeights() {
+    setLoading(true);
+
+    try {
+      console.log("Generating reviewer-reviewer edge weights...");
+
+      const res = await api.post("/api/run_reviewer_edge_weights/");
+      console.log("Response:", res.data);
+
+      alert("Reviewer-Reviewer edge weights generated successfully!");
+    } catch (err) {
+      console.error("Error generating reviewer edge weights:", err);
+
+      alert(
+        err.response?.data?.message ||
+        "Failed to generate reviewer-reviewer edge weights."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ Algorithms
   async function runAlgorithm(algoKey) {
     setLoading(true);
     setResult(null);
@@ -58,18 +86,17 @@ export default function AdminAssign() {
 
       if (algoKey === "ILP") {
         endpoint = "/api/run_ilp/";
-      }
-      else if (algoKey === "LP_with_iterative_rounding") {
-        endpoint = "/api/run_lp_with_iterative_rounding/"
-      }
-      else if (algoKey === "NF") {
+      } else if (algoKey === "LP_with_iterative_rounding") {
+        endpoint = "/api/run_lp_with_iterative_rounding/";
+      } else if (algoKey === "NF") {
         endpoint = "/api/run_network_flow/";
-      } else if (algoKey == "IA") {
+      } else if (algoKey === "IA") {
         endpoint = "/api/iterative_assignment/";
       }
 
       const res = await api.post(endpoint);
       console.log("Result:", res.data);
+
       setResult(res.data);
     } catch (err) {
       console.error("Algorithm error:", err);
@@ -86,6 +113,8 @@ export default function AdminAssign() {
   return (
     <div className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">
       <h2 className="text-xl font-semibold">Reviewer Assignment</h2>
+
+      {/* 🔷 ILP Section */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-4">
         <h3 className="text-md font-semibold text-gray-800">
           ILP-based Algorithms
@@ -98,7 +127,7 @@ export default function AdminAssign() {
             className={`rounded-xl px-4 py-2 text-white ${loading ? "bg-blue-300" : "bg-blue-600"
               }`}
           >
-            Assign Paper-Reviewer edge weights
+            Assign Paper-Reviewer Edge Weights
           </button>
 
           {crossJoinReady && (
@@ -106,35 +135,38 @@ export default function AdminAssign() {
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("ILP")}
             className={`px-4 py-2 rounded-xl text-white ${crossJoinReady && !loading
-              ? "bg-gray-900"
-              : "bg-gray-400 cursor-not-allowed"
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
               }`}
           >
             Run ILP
           </button>
+
           <button
             disabled={!crossJoinReady || loading}
             onClick={() => runAlgorithm("LP_with_iterative_rounding")}
             className={`px-4 py-2 rounded-xl text-white ${crossJoinReady && !loading
-              ? "bg-gray-900"
-              : "bg-gray-400 cursor-not-allowed"
+                ? "bg-gray-900"
+                : "bg-gray-400 cursor-not-allowed"
               }`}
           >
-            Run LP with iterative rounding
+            Run LP with Iterative Rounding
           </button>
         </div>
       </div>
+
+      {/* 🔷 Other Algorithms */}
       <div className="border rounded-2xl p-4 bg-gray-50 space-y-3">
         <h3 className="text-md font-semibold text-gray-800">
           Other Algorithms
         </h3>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button
             disabled={loading}
             onClick={() => runAlgorithm("NF")}
@@ -152,25 +184,39 @@ export default function AdminAssign() {
           >
             Iterative Assignment
           </button>
+
+          {/* ✅ NEW BUTTON */}
+          <button
+            disabled={loading}
+            onClick={generateReviewerEdgeWeights}
+            className={`px-4 py-2 rounded-xl text-white ${loading ? "bg-gray-400" : "bg-blue-600"
+              }`}
+          >
+            Assign Reviewer-Reviewer Edge Weights
+          </button>
         </div>
       </div>
+
+      {/* 🔄 Loading */}
       {loading && (
         <div className="text-sm text-gray-600 animate-pulse">
           Processing...
         </div>
       )}
+
+      {/* 📊 Results */}
       {Array.isArray(result) && result.length > 0 && (
-  <div className="space-y-2">
-    {result.map((r) => (
-      <div key={r.id} className="border p-3 rounded">
-        <div className="font-medium">{r.id}</div>
-        <div className="text-sm text-gray-600">
-          {r.assignedReviewers?.join(", ")}
+        <div className="space-y-2">
+          {result.map((r) => (
+            <div key={r.id} className="border p-3 rounded">
+              <div className="font-medium">{r.id}</div>
+              <div className="text-sm text-gray-600">
+                {r.assignedReviewers?.join(", ")}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    ))}
-  </div>
-)}
+      )}
     </div>
   );
 }
