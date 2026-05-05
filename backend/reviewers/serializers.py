@@ -17,22 +17,21 @@ class ReviewerSerializer(serializers.ModelSerializer):
 
 
 class AssignedPaperSerializer(serializers.ModelSerializer):
-    # Mapping to the fields inside the related Paper model
+    # Use 'paper_id' (the model field name) instead of 'paper'
     paper_title = serializers.CharField(source="paper_id.title", read_only=True)
     paper_abstract = serializers.CharField(source="paper_id.abstract", read_only=True)
-    # Ensure these fields exist on your Paper model
-    pdf_url = serializers.CharField(source="paper_id.pdf_file.url", read_only=True) 
+    pdf_url = serializers.CharField(source="paper_id.pdf_url", read_only=True)
 
     class Meta:
         model = FinalAssignment
         fields = [
             "id",
-            "paper_id", # This returns the ID
+            "paper_id", # This will return the actual ID of the paper
             "paper_title",
             "paper_abstract",
             "reviewer_status",
             "pdf_url",
-            "paper_score", # Matches your model's 'paper_score'
+            "paper_score", # Ensure this matches your model field 'paper_score'
             "comments"
         ]
 

@@ -9,75 +9,94 @@ export default function ReviewerAssigned() {
   const [submitted, setSubmitted] = useState([]);
   const [q, setQ] = useState("");
 
-  // 🔥 Fetch from backend
+  // 1. Fetch data from the backend
   useEffect(() => {
     axios
       .get("/api/reviewer/my-papers/")
       .then((res) => {
+        // We use the keys defined in your Django Response: pending_papers and submitted_papers
         setPending(res.data.pending_papers || []);
         setSubmitted(res.data.submitted_papers || []);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => console.error("Error fetching assigned papers:", err));
   }, []);
 
-  // 🔥 Merge both lists (optional)
-  const allPapers = [...pending, ...submitted];
+  // 2. Memoize the merged list to prevent unnecessary re-renders
+  const allPapers = useMemo(() => [...pending, ...submitted], [pending, submitted]);
 
-  // 🔍 Search
+  // 3. Search logic with safety checks for numbers and nulls
   const filtered = useMemo(() => {
-    return allPapers.filter((p) =>
-      (p.paper_title + p.paper_id)
-        .toLowerCase()
-        .includes(q.toLowerCase())
-    );
+    const query = q.toLowerCase();
+    return allPapers.filter((p) => {
+      const title = String(p.paper_title || "").toLowerCase();
+      const id = String(p.paper_id_val || "").toLowerCase(); // Using paper_id_val from our serializer
+      return title.includes(query) || id.includes(query);
+    });
   }, [allPapers, q]);
 
   const columns = [
-    { key: "paper_id", header: "Paper ID" },
-    { key: "paper_title", header: "Title" },
-
+    { 
+      key: "paper_id_val", 
+      header: "Paper ID" 
+    },
+    { 
+      key: "paper_title", 
+      header: "Title" 
+    },
     {
       key: "reviewer_status",
       header: "Review Status",
       render: (r) => (
         <StatusBadge
+          // Normalizing lowercase "pending" from DB to match StatusBadge expectations
           status={
-            r.reviewer_status === "Submitted"
+            r.reviewer_status?.toLowerCase() === "submitted"
               ? "SubmittedReview"
               : "Pending"
           }
         />
       ),
     },
-
     {
       key: "action",
       header: "Action",
       render: (r) => (
         <Link
-          className="text-gray-900 font-medium"
-          to={`/reviewer/paper/${r.paper_id}`}
+          className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+          to={`/reviewer/paper/${r.paper_id_val}`}
         >
-          Open
+          Open Detail
         </Link>
       ),
     },
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">Assigned Papers</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Assigned Papers</h2>
+          <p className="text-sm text-gray-500">Manage and review your assigned submissions</p>
+        </div>
 
-        <input
-          className="w-full sm:w-64 rounded-xl border px-3 py-2 text-sm"
-          placeholder="Search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            className="w-full sm:w-72 rounded-xl border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+            placeholder="Search by title or ID..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
       </div>
 
-      <DataTable columns={columns} rows={filtered} rowKey="paper_id" />
+      {/* Using 'id' (the primary key of FinalAssignment) as the rowKey for the table */}
+      <DataTable columns={columns} rows={filtered} rowKey="id" />
+      
+      {allPapers.length === 0 && (
+        <div className="text-center py-10 text-gray-500">
+          No papers have been assigned to you yet.
+        </div>
+      )}
     </div>
   );
 }

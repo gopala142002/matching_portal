@@ -13,42 +13,44 @@ export default function ReviewerDashboard() {
     axios
       .get("/api/reviewer/my-papers/")
       .then((res) => {
+        // Matches res.data.pending_papers from your views.py
         setPending(res.data.pending_papers || []);
         setSubmitted(res.data.submitted_papers || []);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => console.error("Dashboard Error:", err));
   }, []);
 
-  // 🔥 Derived values
   const assigned = [...pending, ...submitted];
-  const pendingCount = pending.length;
-  const submittedCount = submitted.length;
 
   const columns = [
-    { key: "paper_id", header: "Paper ID" },
-    { key: "paper_title", header: "Title" },
-
+    { 
+      key: "paper_id", // Matches "paper_id" in your AssignedPaperSerializer
+      header: "Paper ID" 
+    },
+    { 
+      key: "paper_title", // Matches "paper_title" in your AssignedPaperSerializer
+      header: "Title" 
+    },
     {
-      key: "status",
+      key: "reviewer_status",
       header: "Status",
       render: (r) => (
         <StatusBadge
           status={
-            r.reviewer_status === "Submitted"
+            r.reviewer_status?.toLowerCase() === "submitted"
               ? "SubmittedReview"
               : "Pending"
           }
         />
       ),
     },
-
     {
       key: "action",
       header: "Action",
       render: (r) => (
         <Link
-          className="text-gray-900 font-medium"
-          to={`/reviewer/paper/${r.paper_id}`}
+          className="text-blue-600 font-medium hover:underline"
+          to={`/reviewer/paper/${r.paper_id}`} // Matches "paper_id" in serializer
         >
           Open
         </Link>
@@ -58,22 +60,16 @@ export default function ReviewerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 📊 Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatsCard label="Assigned Papers" value={assigned.length} />
-        <StatsCard label="Pending Reviews" value={pendingCount} />
-        <StatsCard label="Submitted Reviews" value={submittedCount} />
+        <StatsCard label="Pending" value={pending.length} />
+        <StatsCard label="Submitted" value={submitted.length} />
       </div>
 
-      {/* 📋 Table */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Assigned Papers</h3>
-
-          <Link
-            to="/reviewer/assigned"
-            className="rounded-xl border px-4 py-2 text-sm"
-          >
+      <div className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">Assignments</h3>
+          <Link to="/reviewer/assigned" className="text-sm font-medium text-blue-600">
             View All
           </Link>
         </div>
@@ -81,7 +77,7 @@ export default function ReviewerDashboard() {
         <DataTable
           columns={columns}
           rows={assigned.slice(0, 5)}
-          rowKey="paper_id"
+          rowKey="id" // Uses the "id" of the FinalAssignment record
         />
       </div>
     </div>

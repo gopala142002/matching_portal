@@ -1,10 +1,10 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import FinalAssignment
 from .serializers import AssignedPaperSerializer, SubmitReviewSerializer
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -15,17 +15,17 @@ def reviewer_profile(request):
         "user": request.user.email
     })
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def assigned_papers(request):
-    # Use select_related('paper_id') to optimize database hits
+    # Matches your model field 'reviewer_id'
     assignments = FinalAssignment.objects.filter(
         reviewer_id=request.user
     ).select_related("paper_id")
 
-    pending = assignments.filter(reviewer_status="Pending")
-    submitted = assignments.filter(reviewer_status="Submitted")
+    # Use .iexact to handle 'pending' vs 'Pending' differences
+    pending = assignments.filter(reviewer_status__iexact="pending")
+    submitted = assignments.filter(reviewer_status__iexact="submitted")
 
     return Response({
         "status": True,
@@ -36,26 +36,22 @@ def assigned_papers(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def submit_review(request, paper_id):
+    # Search by paper_id (the FK field) and reviewer_id
     assignment = FinalAssignment.objects.filter(
         paper_id=paper_id,
         reviewer_id=request.user
     ).first()
 
     if not assignment:
-        return Response(
-            {"error": "Assignment not found."},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"error": "Assignment not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    if assignment.reviewer_status == "Submitted":
-        return Response(
-            {"error": "Review already submitted."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    # Compare case-insensitively
+    if assignment.reviewer_status.lower() == "submitted":
+        return Response({"error": "Review already submitted."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Use the specific review serializer
     serializer = SubmitReviewSerializer(assignment, data=request.data, partial=True)
     if serializer.is_valid():
+        # Force the status to 'Submitted' on save
         serializer.save(reviewer_status="Submitted")
         return Response({
             "status": True,
@@ -64,16 +60,15 @@ def submit_review(request, paper_id):
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def reviewer_paper_detail(request, paper_id):
-    reviewer = request.user
-
+    # FIX: Use 'reviewer_id' and 'paper_id' (to match your model)
+    # FIX: select_related should use 'paper_id'
     assignment = FinalAssignment.objects.filter(
         paper_id=paper_id,
-        reviewer=reviewer
-    ).select_related("paper").first()
+        reviewer_id=request.user
+    ).select_related("paper_id").first()
 
     if not assignment:
         return Response(
