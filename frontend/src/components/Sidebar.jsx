@@ -25,8 +25,7 @@ export default function Sidebar({ role, open, onClose }) {
       { to: "/author/submissions", label: "My Submissions" },
     ],
     reviewer: [
-      { to: "/reviewer/dashboard", label: "Dashboard" },
-      { to: "/reviewer/assigned", label: "Assigned Papers" },
+      { to: "/reviewer/dashboard", label: "Dashboard" }
     ],
     admin: [
       { to: "/admin/dashboard", label: "Dashboard" },
