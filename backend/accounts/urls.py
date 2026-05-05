@@ -8,7 +8,7 @@ from accounts.views import (
     profile,
     logout_view,
     update_reviewer_status,
-    ReviewerListView  # ✅ Add this
+    ReviewerListView 
 )
 
 urlpatterns = [

@@ -1,15 +1,8 @@
-"""
-Max-Min Fair Paper-Reviewer Assignment (FINAL FIXED VERSION)
-"""
-
 from collections import defaultdict
 from django.db import connection, transaction
 from tqdm import tqdm
 
 
-# ---------------------------------------------------------------------------
-# DATA LOADING FROM DATABASE (FIXED)
-# ---------------------------------------------------------------------------
 
 def load_paper_reviewer_edges():
     with connection.cursor() as cursor:
@@ -36,10 +29,6 @@ def load_reviewer_reviewer_edges():
 
     return [(str(row[0]), str(row[1]), float(row[2])) for row in rows]
 
-
-# ---------------------------------------------------------------------------
-# FORD-FULKERSON (ORDERED)
-# ---------------------------------------------------------------------------
 
 class FordFulkersonGraph:
 
@@ -85,9 +74,7 @@ class FordFulkersonGraph:
         return total
 
 
-# ---------------------------------------------------------------------------
-# CORE ASSIGNMENT
-# ---------------------------------------------------------------------------
+
 
 def _try_assignment(papers, reviewers, pr_weight, closest_neighbour,
                     k, c, threshold):
@@ -153,14 +140,9 @@ def _try_assignment(papers, reviewers, pr_weight, closest_neighbour,
     return feasible, assignments, dict(total_weight)
 
 
-# ---------------------------------------------------------------------------
-# MAIN CLASS
-# ---------------------------------------------------------------------------
-
 class MaxMinReviewerAssignment:
 
-    def __init__(self, paper_reviewer_edges, reviewer_reviewer_edges,
-                 k, c, binary_search_steps=40):
+    def __init__(self, paper_reviewer_edges, reviewer_reviewer_edges,k, c, binary_search_steps=40):
 
         self.k = k
         self.c = c
@@ -218,9 +200,7 @@ class MaxMinReviewerAssignment:
         return best_assignments, best_total_weights, best_min
 
 
-# ---------------------------------------------------------------------------
-# SAVE FUNCTION (NEW)
-# ---------------------------------------------------------------------------
+
 
 def save_iterative_allocation(assignments):
     rows = []
@@ -254,9 +234,6 @@ def save_iterative_allocation(assignments):
     return rows
 
 
-# ---------------------------------------------------------------------------
-# MAIN FUNCTION
-# ---------------------------------------------------------------------------
 
 def main():
     print("Loading data from database...")
@@ -286,10 +263,6 @@ def main():
         "score": best_min,
     }
 
-
-# ---------------------------------------------------------------------------
-# ENTRY POINT
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()
