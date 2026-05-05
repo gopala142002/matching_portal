@@ -3,40 +3,40 @@ import StatsCard from "../../components/StatsCard";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import api from "../api"; // 🛠️ Use your configured api helper
 
 export default function AuthorDashboard() {
   const [papers, setPapers] = useState([]);
-  const [counts, setCounts] = useState({
+  const [stats, setStats] = useState({
+    total: 0,
     submitted: 0,
-    under_review: 0,
-    accepted: 0,
-    rejected: 0,
+    assigned: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchAuthorData = async () => {
       try {
-        const res = await axios.get("http://127.0.0.1:8000/api/papers/", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-          },
-        });
-
-        setPapers(res.data.papers);
-        setCounts(res.data.counts);
+        setLoading(true);
+        // This hits your PaperListView which already filters by request.user
+        const res = await api.get("/api/papers/");
+        
+        if (res.data && res.data.status) {
+          setPapers(res.data.papers || []);
+          setStats(res.data.counts);
+        }
       } catch (err) {
-        console.error("Error fetching dashboard papers:", err);
+        console.error("Author Dashboard Error:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchDashboard();
+    fetchAuthorDashboard();
   }, []);
 
-  const latest = papers.slice(0, 5);
-
   const columns = [
-    { key: "id", header: "Paper ID" },  // ✅ FIXED
+    { key: "id", header: "ID" },
     { key: "title", header: "Title" },
     {
       key: "status",
@@ -48,36 +48,41 @@ export default function AuthorDashboard() {
       header: "Action",
       render: (r) => (
         <Link
-          className="text-gray-900 font-medium"
-          to={`/author/submissions/${r.id}`}  // ✅ FIXED
+          className="text-blue-600 font-medium hover:underline"
+          to={`/author/submissions/${r.id}`}
         >
-          View
+          View Detail
         </Link>
       ),
     },
   ];
 
+  if (loading) return <div className="p-20 text-center">Loading your submissions...</div>;
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard label="Submitted" value={papers.length} />
-        <StatsCard label="Under Review" value={counts.under_review} />
-        <StatsCard label="Accepted" value={counts.accepted} />
-        <StatsCard label="Rejected" value={counts.rejected} />
+      {/* 📊 Author Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatsCard label="Total Submissions" value={stats.total} />
+        <StatsCard label="Successfully Submitted" value={stats.submitted} />
+        <StatsCard label="Currently Under Review" value={stats.assigned} />
       </div>
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Latest Submissions</h3>
 
-          <Link
-            to="/author/submissions"
-            className="rounded-xl border px-4 py-2 text-sm"
-          >
-            View All
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-800">My Papers</h3>
+          <Link to="/author/submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+            + New Submission
           </Link>
         </div>
 
-        <DataTable columns={columns} rows={latest} rowKey="id" /> 
+        {papers.length > 0 ? (
+          <DataTable columns={columns} rows={papers.slice(0, 10)} rowKey="id" />
+        ) : (
+          <div className="py-20 text-center text-gray-400">
+            You haven't submitted any papers yet.
+          </div>
+        )}
       </div>
     </div>
   );

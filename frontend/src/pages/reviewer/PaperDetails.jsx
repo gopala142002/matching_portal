@@ -16,7 +16,6 @@ export default function ReviewerPaperDetails() {
     const fetchPaperDetails = async () => {
       try {
         setLoading(true);
-        // Using the 'api' instance ensures Authorization headers are sent
         const res = await api.get(`/api/reviewers/paper/${paperId}/`);
         
         if (res.data && res.data.status) {
