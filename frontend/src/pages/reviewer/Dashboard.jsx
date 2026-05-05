@@ -16,8 +16,8 @@ export default function ReviewerDashboard() {
       try {
         setLoading(true);
         // Hits your Django assigned_papers view
-        const res = await api.get("/api/reviewer/my-papers/");
-        
+        const res = await api.get("/api/reviewers/my-papers/");
+
         if (res.data && res.data.status) {
           setPending(res.data.pending_papers || []);
           setSubmitted(res.data.submitted_papers || []);
@@ -41,13 +41,13 @@ export default function ReviewerDashboard() {
   const submittedCount = submitted.length;
 
   const columns = [
-    { 
-      key: "paper_id", 
-      header: "Paper ID" 
+    {
+      key: "paper_id",
+      header: "Paper ID"
     },
-    { 
-      key: "paper_title", 
-      header: "Title" 
+    {
+      key: "paper_title",
+      header: "Title"
     },
     {
       key: "reviewer_status",

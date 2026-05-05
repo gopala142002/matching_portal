@@ -15,8 +15,8 @@ export default function ReviewerAssigned() {
       try {
         setLoading(true);
         // Using the same api instance as AdminDashboard
-        const res = await api.get("/api/reviewer/my-papers/");
-        
+        const res = await api.get("/api/reviewers/my-papers/");
+
         if (res.data && res.data.status) {
           setPending(res.data.pending_papers || []);
           setSubmitted(res.data.submitted_papers || []);
@@ -43,13 +43,13 @@ export default function ReviewerAssigned() {
   }, [allPapers, q]);
 
   const columns = [
-    { 
-      key: "paper_id", 
-      header: "Paper ID" 
+    {
+      key: "paper_id",
+      header: "Paper ID"
     },
-    { 
-      key: "paper_title", 
-      header: "Title" 
+    {
+      key: "paper_title",
+      header: "Title"
     },
     {
       key: "reviewer_status",
@@ -106,7 +106,7 @@ export default function ReviewerAssigned() {
 
       <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
         <DataTable columns={columns} rows={filtered} rowKey="id" />
-        
+
         {allPapers.length === 0 && (
           <div className="text-center py-10 text-gray-400">
             No papers have been assigned to you yet.
