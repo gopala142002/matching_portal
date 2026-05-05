@@ -64,7 +64,7 @@ export default function AdminDashboard() {
   if (loading)
     return (
       <div className="p-20 text-center font-medium">
-        Loading Samvad Dashboard...
+      
       </div>
     );
 
