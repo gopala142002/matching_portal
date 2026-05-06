@@ -2,9 +2,6 @@ import os
 import sys
 import django
 
-# -------------------------------
-# DJANGO SETUP
-# -------------------------------
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "matching_portal.settings")
 django.setup()
@@ -13,9 +10,6 @@ from django.db import connection, transaction
 from gurobipy import Model, GRB, quicksum
 
 
-# -------------------------------
-# LOAD DATA
-# -------------------------------
 def load_data():
     with connection.cursor() as cursor:
         cursor.execute("""
@@ -38,13 +32,7 @@ def load_data():
     return list(papers), list(reviewers), weight
 
 
-# -------------------------------
-# SAVE FUNCTION (YOUR FORMAT)
-# -------------------------------
 def save_allocation(assignments):
-    """
-    assignments: set of (paper_id, reviewer_id)
-    """
     assignments = list(assignments)
 
     with transaction.atomic():
@@ -65,14 +53,10 @@ def save_allocation(assignments):
     return assignments
 
 
-# -------------------------------
-# ILP SOLVER
-# -------------------------------
 def solve_ilp(papers, reviewers, weight, k=3, c=6):
 
     model = Model("ReviewerAssignment")
 
-    # VARIABLES
     x = model.addVars(
         [(p, r) for (p, r) in weight],
         vtype=GRB.BINARY,
@@ -81,25 +65,18 @@ def solve_ilp(papers, reviewers, weight, k=3, c=6):
 
     z = model.addVar(vtype=GRB.CONTINUOUS, name="z")
 
-    # -------------------------------
-    # CONSTRAINTS
-    # -------------------------------
-
-    # Each paper gets exactly k reviewers
     for p in papers:
         model.addConstr(
             quicksum(x[p, r] for r in reviewers if (p, r) in x) == k,
             name=f"paper_{p}"
         )
 
-    # Reviewer capacity
     for r in reviewers:
         model.addConstr(
             quicksum(x[p, r] for p in papers if (p, r) in x) <= c,
             name=f"reviewer_{r}"
         )
 
-    # Fairness constraint
     for p in papers:
         model.addConstr(
             quicksum(weight.get((p, r), 0.0) * x[p, r]
@@ -107,21 +84,16 @@ def solve_ilp(papers, reviewers, weight, k=3, c=6):
             name=f"fairness_{p}"
         )
 
-    # OBJECTIVE
     model.setObjective(z, GRB.MAXIMIZE)
 
     model.setParam("OutputFlag", 1)
 
-    # SOLVE
     model.optimize()
 
     if model.status != GRB.OPTIMAL:
-        print("❌ No optimal solution found")
+        print("No optimal solution found")
         return None
 
-    # -------------------------------
-    # EXTRACT RESULTS
-    # -------------------------------
     assignments = {p: [] for p in papers}
     paper_scores = {}
 
@@ -138,22 +110,12 @@ def solve_ilp(papers, reviewers, weight, k=3, c=6):
 
     min_score = min(paper_scores.values()) if paper_scores else 0.0
 
-    # -------------------------------
-    # PRINT RESULTS
-    # -------------------------------
     print("\n===== FINAL RESULTS =====")
     print(f"Minimum total edge weight (fairness score): {min_score:.4f}")
-
-    # optional detailed view
-    # for p in sorted(paper_scores):
-    #     print(f"Paper {p}: {paper_scores[p]:.4f}")
 
     return selected_pairs, paper_scores, min_score
 
 
-# -------------------------------
-# MAIN
-# -------------------------------
 def main():
 
     print("Loading data from DB...")
@@ -163,9 +125,8 @@ def main():
     print(f"Reviewers: {len(reviewers)}")
     print(f"Edges: {len(weight)}")
 
-    # Feasibility check
     if len(papers) * 3 > len(reviewers) * 6:
-        print("⚠️ WARNING: Problem may be infeasible!")
+        print("WARNING: Problem may be infeasible!")
 
     result = solve_ilp(papers, reviewers, weight)
 
@@ -174,9 +135,6 @@ def main():
 
     selected_pairs, paper_scores, min_score = result
 
-    # -------------------------------
-    # SAVE TO DATABASE
-    # -------------------------------
     print("\nSaving assignments to DB...")
     save_allocation(selected_pairs)
 

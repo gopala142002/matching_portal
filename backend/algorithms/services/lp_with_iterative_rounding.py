@@ -2,9 +2,6 @@ import os
 import sys
 import django
 
-# -------------------------------
-# DJANGO SETUP
-# -------------------------------
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "matching_portal.settings")
 django.setup()
@@ -13,9 +10,6 @@ from django.db import connection, transaction
 from gurobipy import Model, GRB, quicksum
 
 
-# -------------------------------
-# LOAD DATA
-# -------------------------------
 def load_data():
     with connection.cursor() as cursor:
         cursor.execute("""
@@ -38,9 +32,6 @@ def load_data():
     return list(papers), list(reviewers), weight
 
 
-# -------------------------------
-# SAVE FUNCTION
-# -------------------------------
 def save_allocation(assignments):
     assignments = list(assignments)
 
@@ -62,9 +53,6 @@ def save_allocation(assignments):
     return assignments
 
 
-# -------------------------------
-# ITERATIVE ROUNDING SOLVER
-# -------------------------------
 def iterative_rounding(papers, reviewers, weight, k=3, c=6):
 
     remaining_edges = set(weight.keys())
@@ -78,9 +66,6 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
 
     while True:
 
-        # -------------------------------
-        # BUILD LP
-        # -------------------------------
         model = Model("IterativeRounding")
         model.setParam("OutputFlag", 0)
 
@@ -91,21 +76,18 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
 
         z = model.addVar(lb=0, name="z")
 
-        # paper constraints
         for p in papers:
             model.addConstr(
                 quicksum(x[p, r] for (pp, r) in remaining_edges if pp == p)
                 == paper_need[p]
             )
 
-        # reviewer constraints
         for r in reviewers:
             model.addConstr(
                 quicksum(x[p, r] for (p, rr) in remaining_edges if rr == r)
                 <= reviewer_cap[r]
             )
 
-        # fairness constraints
         for p in papers:
             model.addConstr(
                 quicksum(weight[(p, r)] * x[p, r]
@@ -117,26 +99,21 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
         model.optimize()
 
         if model.status != GRB.OPTIMAL:
-            print("❌ LP infeasible")
+            print("LP infeasible")
             break
 
-        # -------------------------------
-        # ROUNDING STEP
-        # -------------------------------
         fixed_any = False
 
         for (p, r) in list(remaining_edges):
 
             val = x[p, r].X
 
-            # pick high-confidence edges
             if val >= 0.999:
                 selected.add((int(p), int(r)))
 
                 paper_need[p] -= 1
                 reviewer_cap[r] -= 1
 
-                # remove all edges of this pair
                 remaining_edges = {
                     (pp, rr)
                     for (pp, rr) in remaining_edges
@@ -145,12 +122,8 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
 
                 fixed_any = True
 
-        # -------------------------------
-        # FALLBACK (NO INTEGER FOUND)
-        # -------------------------------
         if not fixed_any:
 
-            # pick best fractional edge
             best_edge = max(
                 remaining_edges,
                 key=lambda e: x[e].X * weight[e]
@@ -164,15 +137,9 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
 
             remaining_edges.remove(best_edge)
 
-        # -------------------------------
-        # STOP CONDITION
-        # -------------------------------
         if all(v == 0 for v in paper_need.values()):
             break
 
-    # -------------------------------
-    # COMPUTE SCORES
-    # -------------------------------
     assignments = {p: [] for p in papers}
 
     for p, r in selected:
@@ -191,9 +158,6 @@ def iterative_rounding(papers, reviewers, weight, k=3, c=6):
     return selected, paper_scores, min_score
 
 
-# -------------------------------
-# MAIN
-# -------------------------------
 def main():
 
     print("Loading data from DB...")
@@ -204,7 +168,7 @@ def main():
     print(f"Edges: {len(weight)}")
 
     if len(papers) * 3 > len(reviewers) * 6:
-        print("⚠️ WARNING: Problem may be infeasible!")
+        print("WARNING: Problem may be infeasible!")
 
     selected_pairs, paper_scores, min_score = iterative_rounding(
         papers, reviewers, weight

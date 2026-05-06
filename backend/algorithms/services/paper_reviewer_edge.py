@@ -15,9 +15,6 @@ from tqdm import tqdm
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 
-# -------------------------------
-# TABLE PREPARATION
-# -------------------------------
 def prepare_paper_reviewer_table():
     with connection.cursor() as cursor:
 
@@ -38,7 +35,6 @@ def prepare_paper_reviewer_table():
             TRUNCATE TABLE paper_to_reviewer RESTART IDENTITY;
         """)
 
-        # IMPORTANT: No institution filtering anymore
         cursor.execute("""
             INSERT INTO paper_to_reviewer (researcher_id, paper_id)
             SELECT r.id, p.id
@@ -50,9 +46,6 @@ def prepare_paper_reviewer_table():
     print("paper_to_reviewer refreshed")
 
 
-# -------------------------------
-# HELPERS
-# -------------------------------
 def clean_text(text):
     if not text:
         return ""
@@ -72,9 +65,6 @@ def parse_field(field):
 
 
 def get_overlap_score(inst1, inst2):
-    """
-    Jaccard similarity between institution sets
-    """
     try:
         set1 = set(json.loads(inst1))
         set2 = set(json.loads(inst2))
@@ -90,9 +80,6 @@ def get_overlap_score(inst1, inst2):
     return intersection / union
 
 
-# -------------------------------
-# MAIN SCORING FUNCTION
-# -------------------------------
 def compute_similarity_scores(batch_size=2000):
 
     with connection.cursor() as cursor:
@@ -143,23 +130,19 @@ def compute_similarity_scores(batch_size=2000):
             r_inst_list.append(r_inst)
             p_aff_list.append(p_aff)
 
-        # Embeddings
         paper_emb = model.encode(paper_texts, batch_size=64, convert_to_numpy=True)
         reviewer_emb = model.encode(reviewer_texts, batch_size=64, convert_to_numpy=True)
 
-        # Normalize
         paper_emb /= np.linalg.norm(paper_emb, axis=1, keepdims=True)
         reviewer_emb /= np.linalg.norm(reviewer_emb, axis=1, keepdims=True)
 
         sims = np.sum(paper_emb * reviewer_emb, axis=1)
 
-        # Combine with institution penalty
         for i in range(len(ids)):
             keyword_sim = float(max(0.0, min(1.0, sims[i])))
 
             inst_overlap = get_overlap_score(r_inst_list[i], p_aff_list[i])
 
-            # Final score
             final_score = keyword_sim * (1 - inst_overlap)
 
             similarities.append((final_score, ids[i]))
@@ -181,9 +164,6 @@ def compute_similarity_scores(batch_size=2000):
     }
 
 
-# -------------------------------
-# MAIN DRIVER
-# -------------------------------
 def main():
 
     steps = [

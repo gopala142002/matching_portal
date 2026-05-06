@@ -15,9 +15,6 @@ from tqdm import tqdm
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 
-# -------------------------------
-# TABLE PREPARATION
-# -------------------------------
 def prepare_reviewer_graph():
     with connection.cursor() as cursor:
 
@@ -28,10 +25,8 @@ def prepare_reviewer_graph():
                 reviewer_id_right BIGINT NOT NULL,
                 edge_weight DOUBLE PRECISION,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
                 CONSTRAINT fk_left FOREIGN KEY (reviewer_id_left) REFERENCES researchers (id),
                 CONSTRAINT fk_right FOREIGN KEY (reviewer_id_right) REFERENCES researchers (id),
-
                 CONSTRAINT unique_pair UNIQUE (reviewer_id_left, reviewer_id_right)
             );
         """)
@@ -53,9 +48,6 @@ def prepare_reviewer_graph():
     print("reviewer_to_reviewer table ready")
 
 
-# -------------------------------
-# HELPERS
-# -------------------------------
 def parse_list_field(field):
     if not field:
         return []
@@ -89,9 +81,6 @@ def compute_embedding_similarity(texts1, texts2):
     return np.sum(emb1 * emb2, axis=1)
 
 
-# -------------------------------
-# MAIN SIMILARITY FUNCTION
-# -------------------------------
 def compute_reviewer_similarity(batch_size=2000):
 
     with connection.cursor() as cursor:
@@ -133,25 +122,19 @@ def compute_reviewer_similarity(batch_size=2000):
 
             ids.append(rtr_id)
 
-            # text for embedding
             int_left.append(clean_join(l_int_list))
             int_right.append(clean_join(r_int_list))
 
-            # institution similarity
             inst_sims.append(jaccard_similarity(l_inst_list, r_inst_list))
 
-        # embedding similarity (research interests)
         int_sims = compute_embedding_similarity(int_left, int_right)
         inst_sims = np.array(inst_sims)
 
-        # combine scores
         for i in range(len(ids)):
 
             interest_sim = float(max(0.0, min(1.0, int_sims[i])))
             inst_sim = inst_sims[i]
 
-            # final score:
-            # high if interests match, penalize if same institution
             final_score = interest_sim * (1 - inst_sim)
 
             similarities.append((final_score, ids[i]))
@@ -173,9 +156,6 @@ def compute_reviewer_similarity(batch_size=2000):
     }
 
 
-# -------------------------------
-# MAIN DRIVER
-# -------------------------------
 def main():
 
     steps = [

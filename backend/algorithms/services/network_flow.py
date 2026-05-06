@@ -1,23 +1,12 @@
-# -------------------------------------------------------------------
-# DJANGO SETUP (IMPORTANT)
-# -------------------------------------------------------------------
 import os
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'matching_portal.settings')
 django.setup()
 
-
-# -------------------------------------------------------------------
-# IMPORTS
-# -------------------------------------------------------------------
 from collections import deque, defaultdict
 from django.db import connection, transaction
 
-
-# -------------------------------------------------------------------
-# LOAD DATA FROM DATABASE
-# -------------------------------------------------------------------
 
 def load_paper_reviewer_edges():
     with connection.cursor() as cursor:
@@ -28,13 +17,8 @@ def load_paper_reviewer_edges():
         """)
         rows = cursor.fetchall()
 
-    # ✅ Use INT directly (IMPORTANT FIX) comment
     return [(int(row[0]), int(row[1]), float(row[2])) for row in rows]
 
-
-# -------------------------------------------------------------------
-# BUILD DATA STRUCTURES
-# -------------------------------------------------------------------
 
 def build_data_structures(pr_edges):
     papers = sorted({p for p, _, _ in pr_edges})
@@ -47,10 +31,6 @@ def build_data_structures(pr_edges):
 
     return papers, reviewers, paper_to_reviewers
 
-
-# -------------------------------------------------------------------
-# MAX FLOW (EDMONDS-KARP)
-# -------------------------------------------------------------------
 
 class MaxFlow:
     def __init__(self):
@@ -109,17 +89,12 @@ class MaxFlow:
         return flow
 
 
-# -------------------------------------------------------------------
-# FEASIBILITY CHECK + ASSIGNMENT
-# -------------------------------------------------------------------
-
 def solve_with_threshold(papers, reviewers, paper_to_reviewers, k, c, threshold):
     mf = MaxFlow()
 
     SOURCE = "S"
     SINK = "T"
 
-    # Source → Paper
     for p in papers:
         mf.add_edge(SOURCE, p, k)
 
@@ -127,7 +102,6 @@ def solve_with_threshold(papers, reviewers, paper_to_reviewers, k, c, threshold)
             if w >= threshold:
                 mf.add_edge(p, r, 1)
 
-    # Reviewer → Sink
     for r in reviewers:
         mf.add_edge(r, SINK, c)
 
@@ -136,7 +110,6 @@ def solve_with_threshold(papers, reviewers, paper_to_reviewers, k, c, threshold)
     if flow != len(papers) * k:
         return False, None
 
-    # Extract assignment
     assignment = defaultdict(list)
 
     for p in papers:
@@ -146,10 +119,6 @@ def solve_with_threshold(papers, reviewers, paper_to_reviewers, k, c, threshold)
 
     return True, assignment
 
-
-# -------------------------------------------------------------------
-# BINARY SEARCH (MAX-MIN FAIRNESS)
-# -------------------------------------------------------------------
 
 def solve(papers, reviewers, paper_to_reviewers, k, c):
     lo, hi = 0.0, 1.0
@@ -173,10 +142,6 @@ def solve(papers, reviewers, paper_to_reviewers, k, c):
     return best_score, best_assignment
 
 
-# -------------------------------------------------------------------
-# SAVE TO DATABASE
-# -------------------------------------------------------------------
-
 def save_iterative_allocation(assignments):
     rows = []
 
@@ -186,52 +151,43 @@ def save_iterative_allocation(assignments):
 
     with transaction.atomic():
         with connection.cursor() as cursor:
-
-            # Clear old assignments
             cursor.execute("DELETE FROM final_assignment")
 
-            # Insert new assignments
             cursor.executemany("""
                 INSERT INTO final_assignment (paper_id, researcher_id, reviewer_status)
                 VALUES (%s, %s, 'pending')
             """, rows)
 
-            # Update paper status
             cursor.execute("""
                 UPDATE papers
                 SET status = 'Under review'
             """)
 
-    print(f"✅ Saved {len(rows)} assignments.")
+    print(f"Saved {len(rows)} assignments.")
     return rows
 
 
-# -------------------------------------------------------------------
-# MAIN
-# -------------------------------------------------------------------
-
 def main():
-    print("📥 Loading data from database...")
+    print("Loading data from database...")
 
     pr_edges = load_paper_reviewer_edges()
     papers, reviewers, paper_to_reviewers = build_data_structures(pr_edges)
 
-    # PARAMETERS
-    k = 3   # reviewers per paper
-    c = 6   # max papers per reviewer
+    k = 3
+    c = 6
 
-    print("\n🚀 Running Max-Min Fair Assignment...")
+    print("\nRunning Max-Min Fair Assignment...")
 
     score, assignment = solve(papers, reviewers, paper_to_reviewers, k, c)
 
-    print("\n✅ Max-Min Fair Score:", round(score, 4))
+    print("\nMax-Min Fair Score:", round(score, 4))
 
-    print("\n📊 Sample Assignments (first 10 papers):")
+    print("\nSample Assignments (first 10 papers):")
     for p in papers[:10]:
         print(f"{p} → {assignment[p]}")
 
-    # SAVE RESULTS
     save_iterative_allocation(assignment)
+
 
 if __name__ == "__main__":
     main()
