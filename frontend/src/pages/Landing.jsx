@@ -69,12 +69,12 @@ export default function Landing() {
               Author / Reviewer Login
             </Link>
 
-            <Link
+            {/* <Link
               to="/register"
               className="rounded-xl border border-white px-6 py-3 text-sm font-semibold hover:bg-white hover:text-indigo-900 transition"
             >
               Submit Paper
-            </Link>
+            </Link> */}
 
             <Link
               to="/adminlogin"
@@ -181,51 +181,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* COMMITTEE */}
-        <section className="mt-12 bg-white rounded-3xl p-10 shadow">
-          <h2 className="text-2xl font-semibold text-gray-800">
-            Organizing Committee
-          </h2>
-
-          <div className="mt-6 grid md:grid-cols-2 gap-6 text-sm text-gray-700">
-            <div>
-              <strong>General Chair</strong>
-              <div className="text-gray-600">Renée J. Miller (University of Toronto)</div>
-            </div>
-
-            <div>
-              <strong>Program Chairs</strong>
-              <div className="text-gray-600">Surajit Chaudhuri (Microsoft Research)</div>
-              <div className="text-gray-600">Tim Kraska (MIT)</div>
-            </div>
-
-            <div>
-              <strong>Industry Track Chairs</strong>
-              <div className="text-gray-600">Leading experts from industry</div>
-            </div>
-
-            <div>
-              <strong>Program Committee</strong>
-              <div className="text-gray-600">
-                International researchers across academia & industry
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* GUIDELINES */}
-        <section className="mt-12 bg-white rounded-3xl p-10 shadow">
-          <h2 className="text-2xl font-semibold text-gray-800">
-            Submission Guidelines
-          </h2>
-
-          <ul className="mt-4 space-y-3 text-gray-600 text-sm">
-            <li>✔ Original research contributions</li>
-            <li>✔ Double-blind submission format</li>
-            <li>✔ Strict plagiarism policy</li>
-            <li>✔ Reproducibility encouraged</li>
-          </ul>
-        </section>
+        
 
         {/* FOOTER */}
         <footer className="mt-16 text-center text-sm text-gray-500">
